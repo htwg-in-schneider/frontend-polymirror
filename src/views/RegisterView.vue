@@ -1,8 +1,27 @@
 <script setup>
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
 import authBg from '@/assets/images/auth-bg.jpg';
+import { useUserStore } from '@/stores/userStore.js';
+
+const router = useRouter();
+const userStore = useUserStore();
 
 const showPassword = ref(false);
+const username = ref('');
+const email = ref('');
+const password = ref('');
+const errorMsg = ref('');
+
+async function handleRegister() {
+  errorMsg.value = '';
+  try {
+    await userStore.register(username.value, email.value, password.value);
+    router.push('/profile');
+  } catch (e) {
+    errorMsg.value = e;
+  }
+}
 </script>
 
 <template>
@@ -59,26 +78,29 @@ const showPassword = ref(false);
         <h1 class="auth-title">Create Identity</h1>
         <p class="auth-subtitle">Enter the grid to begin predict.</p>
 
-        <form style="display:flex;flex-direction:column;gap:var(--sp-6);">
+        <form style="display:flex;flex-direction:column;gap:var(--sp-6);" @submit.prevent="handleRegister">
+          <div v-if="errorMsg" style="color:#ff6b6b;font-size:.85rem;padding:var(--sp-3);border:1px solid rgba(255,107,107,0.3);border-radius:var(--radius-md);">
+            {{ errorMsg }}
+          </div>
           <div class="form-group">
             <label class="form-label" for="email">Email Address</label>
             <div class="input-wrapper">
               <span class="material-symbols-outlined">mail</span>
-              <input class="form-input has-icon" id="email" type="email" placeholder="operator@network.net" autocomplete="email">
+              <input class="form-input has-icon" id="email" v-model="email" type="email" placeholder="operator@network.net" autocomplete="email" required>
             </div>
           </div>
           <div class="form-group">
             <label class="form-label" for="username">Username</label>
             <div class="input-wrapper">
               <span class="material-symbols-outlined">alternate_email</span>
-              <input class="form-input has-icon" id="username" type="text" placeholder="VANGUARD_01" style="font-family:var(--font-label);">
+              <input class="form-input has-icon" id="username" v-model="username" type="text" placeholder="VANGUARD_01" style="font-family:var(--font-label);" required>
             </div>
           </div>
           <div class="form-group">
             <label class="form-label" for="password">Password</label>
             <div class="input-wrapper">
               <span class="material-symbols-outlined">lock</span>
-              <input class="form-input has-icon" id="password" :type="showPassword ? 'text' : 'password'" placeholder="••••••••••••" autocomplete="new-password">
+              <input class="form-input has-icon" id="password" v-model="password" :type="showPassword ? 'text' : 'password'" placeholder="••••••••••••" autocomplete="new-password" required>
               <button type="button" @click="showPassword = !showPassword" style="position:absolute;right:var(--sp-4);top:50%;transform:translateY(-50%);color:var(--outline);transition:color var(--t-base);background:none;border:none;cursor:pointer;">
                 <span class="material-symbols-outlined">{{ showPassword ? 'visibility_off' : 'visibility' }}</span>
               </button>
@@ -107,8 +129,8 @@ const showPassword = ref(false);
               I acknowledge the terms of <a href="#" class="form-link">polymirror</a> and authorize identity anchoring.
             </span>
           </label>
-          <button type="submit" class="btn btn-kinetic" style="width:100%;padding:var(--sp-4);font-size:.875rem;border-radius:var(--radius-lg);justify-content:center;gap:var(--sp-2);">
-            Sign Up
+          <button type="submit" class="btn btn-kinetic" :disabled="userStore.loading" style="width:100%;padding:var(--sp-4);font-size:.875rem;border-radius:var(--radius-lg);justify-content:center;gap:var(--sp-2);">
+            {{ userStore.loading ? 'Registriere...' : 'Sign Up' }}
             <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">bolt</span>
           </button>
         </form>

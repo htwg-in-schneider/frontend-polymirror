@@ -1,4 +1,67 @@
 <script setup>
+import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import { useUserStore } from '@/stores/userStore.js';
+
+const router = useRouter();
+const userStore = useUserStore();
+
+const editMode = ref(null); // 'username' | 'email' | 'password' | null
+const editUsername = ref('');
+const editEmail = ref('');
+const editPassword = ref('');
+const editMsg = ref('');
+const editError = ref('');
+const showDeleteConfirm = ref(false);
+
+const user = computed(() => userStore.currentUser);
+const initials = computed(() => {
+  const name = user.value?.username || '?';
+  return name.slice(0, 2).toUpperCase();
+});
+
+onMounted(async () => {
+  if (!user.value) {
+    router.push('/login');
+    return;
+  }
+  await userStore.loadProfile();
+});
+
+function startEdit(field) {
+  editMode.value = field;
+  editMsg.value = '';
+  editError.value = '';
+  if (field === 'username') editUsername.value = user.value?.username || '';
+  if (field === 'email')    editEmail.value    = user.value?.email    || '';
+  if (field === 'password') editPassword.value = '';
+}
+
+async function saveEdit() {
+  editError.value = '';
+  editMsg.value = '';
+  const updates = {};
+  if (editMode.value === 'username') updates.username = editUsername.value;
+  if (editMode.value === 'email')    updates.email    = editEmail.value;
+  if (editMode.value === 'password') updates.password = editPassword.value;
+  try {
+    await userStore.updateProfile(updates);
+    editMsg.value = 'Gespeichert!';
+    editMode.value = null;
+  } catch (e) {
+    editError.value = e;
+  }
+}
+
+async function confirmDelete() {
+  try {
+    await userStore.deleteAccount();
+    router.push('/');
+  } catch (e) {
+    editError.value = e;
+    showDeleteConfirm.value = false;
+  }
+}
 </script>
 
 <template>
@@ -58,33 +121,59 @@
         <p class="section-eyebrow" style="text-align:center;font-size:1.5rem;letter-spacing:.05em;margin-bottom:var(--sp-6);">Account Settings</p>
         <div style="display:flex;justify-content:center;margin-bottom:var(--sp-5);">
           <div class="profile-avatar-ring">
-            <span class="profile-avatar-initials">V1</span>
+            <span class="profile-avatar-initials">{{ initials }}</span>
             <button style="position:absolute;bottom:-4px;right:-4px;width:2rem;height:2rem;border-radius:50%;background:var(--surface-high);border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;cursor:pointer;" title="Edit avatar">
               <span class="material-symbols-outlined" style="font-size:0.9rem;color:var(--on-surface-variant);">edit</span>
             </button>
           </div>
         </div>
-        <h1 style="font-family:var(--font-headline);font-size:clamp(1.75rem,4vw,2.5rem);font-weight:900;letter-spacing:-.02em;color:var(--primary);text-shadow:var(--glow-text);margin-bottom:var(--sp-2);">VANGUARD_01</h1>
-        <p style="font-family:var(--font-label);font-size:0.75rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--on-surface-variant);">Member since March 2024</p>
+        <h1 style="font-family:var(--font-headline);font-size:clamp(1.75rem,4vw,2.5rem);font-weight:900;letter-spacing:-.02em;color:var(--primary);text-shadow:var(--glow-text);margin-bottom:var(--sp-2);">{{ user?.username }}</h1>
+        <p style="font-family:var(--font-label);font-size:0.75rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--on-surface-variant);">{{ user?.email }}</p>
       </div>
     </div>
 
     <!-- Settings sections -->
     <div class="profile-section" style="display:flex;flex-direction:column;gap:var(--sp-6);">
 
+      <!-- Feedback Nachrichten -->
+      <div v-if="editMsg" style="color:#4caf50;font-size:.85rem;padding:var(--sp-3);border:1px solid rgba(76,175,80,0.3);border-radius:var(--radius-md);text-align:center;">{{ editMsg }}</div>
+      <div v-if="editError" style="color:#ff6b6b;font-size:.85rem;padding:var(--sp-3);border:1px solid rgba(255,107,107,0.3);border-radius:var(--radius-md);text-align:center;">{{ editError }}</div>
+
       <!-- 1. Account Information -->
       <div class="settings-card">
         <p class="settings-card-title">Account Information</p>
+
+        <!-- Email -->
         <div class="settings-row">
-          <div><p class="settings-row-label">Email</p><p class="settings-row-value">operator@network.net</p></div>
-          <button class="btn-edit"><span class="material-symbols-outlined" style="font-size:0.875rem;">edit</span>Edit</button>
+          <div>
+            <p class="settings-row-label">Email</p>
+            <p v-if="editMode !== 'email'" class="settings-row-value">{{ user?.email }}</p>
+            <div v-else style="display:flex;gap:var(--sp-2);margin-top:var(--sp-2);">
+              <input class="form-input" v-model="editEmail" type="email" style="flex:1;padding:var(--sp-2) var(--sp-3);font-size:.875rem;">
+              <button class="btn-edit" @click="saveEdit">Speichern</button>
+              <button class="btn-edit" @click="editMode=null">Abbrechen</button>
+            </div>
+          </div>
+          <button v-if="editMode !== 'email'" class="btn-edit" @click="startEdit('email')"><span class="material-symbols-outlined" style="font-size:0.875rem;">edit</span>Edit</button>
         </div>
+
+        <!-- Username -->
         <div class="settings-row">
-          <div><p class="settings-row-label">Username</p><p class="settings-row-value">VANGUARD_01</p></div>
-          <button class="btn-edit"><span class="material-symbols-outlined" style="font-size:0.875rem;">edit</span>Edit</button>
+          <div>
+            <p class="settings-row-label">Username</p>
+            <p v-if="editMode !== 'username'" class="settings-row-value">{{ user?.username }}</p>
+            <div v-else style="display:flex;gap:var(--sp-2);margin-top:var(--sp-2);">
+              <input class="form-input" v-model="editUsername" type="text" style="flex:1;padding:var(--sp-2) var(--sp-3);font-size:.875rem;">
+              <button class="btn-edit" @click="saveEdit">Speichern</button>
+              <button class="btn-edit" @click="editMode=null">Abbrechen</button>
+            </div>
+          </div>
+          <button v-if="editMode !== 'username'" class="btn-edit" @click="startEdit('username')"><span class="material-symbols-outlined" style="font-size:0.875rem;">edit</span>Edit</button>
         </div>
+
+        <!-- User ID -->
         <div class="settings-row">
-          <div><p class="settings-row-label">User ID</p><p class="settings-row-value muted">PMR-4201</p></div>
+          <div><p class="settings-row-label">User ID</p><p class="settings-row-value muted">#{{ user?.id }}</p></div>
           <span style="font-family:var(--font-label);font-size:0.625rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--outline);background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:var(--radius-sm);padding:var(--sp-1) var(--sp-2);">Fixed</span>
         </div>
       </div>
@@ -93,12 +182,16 @@
       <div class="settings-card">
         <p class="settings-card-title">Security</p>
         <div class="settings-row">
-          <div><p class="settings-row-label">Password</p><p class="settings-row-value" style="letter-spacing:.15em;">••••••••••••</p></div>
-          <button class="btn-edit"><span class="material-symbols-outlined" style="font-size:0.875rem;">lock</span>Change</button>
-        </div>
-        <div class="settings-row">
-          <div><p class="settings-row-label">Two-Factor Authentication</p><p class="settings-row-value muted">Disabled</p></div>
-          <button class="btn-edit"><span class="material-symbols-outlined" style="font-size:0.875rem;">shield</span>Enable</button>
+          <div>
+            <p class="settings-row-label">Password</p>
+            <p v-if="editMode !== 'password'" class="settings-row-value" style="letter-spacing:.15em;">••••••••••••</p>
+            <div v-else style="display:flex;gap:var(--sp-2);margin-top:var(--sp-2);">
+              <input class="form-input" v-model="editPassword" type="password" placeholder="Neues Passwort" style="flex:1;padding:var(--sp-2) var(--sp-3);font-size:.875rem;">
+              <button class="btn-edit" @click="saveEdit">Speichern</button>
+              <button class="btn-edit" @click="editMode=null">Abbrechen</button>
+            </div>
+          </div>
+          <button v-if="editMode !== 'password'" class="btn-edit" @click="startEdit('password')"><span class="material-symbols-outlined" style="font-size:0.875rem;">lock</span>Change</button>
         </div>
       </div>
 
@@ -145,10 +238,22 @@
             <p style="font-size:0.9375rem;color:var(--on-surface);font-weight:500;margin-bottom:var(--sp-1);">Delete Account</p>
             <p style="font-size:0.8125rem;color:var(--on-surface-variant);">This action cannot be undone.</p>
           </div>
-          <button class="btn-danger">
+          <button class="btn-danger" @click="showDeleteConfirm = true">
             <span class="material-symbols-outlined" style="font-size:1rem;">delete_forever</span>
             Delete
           </button>
+        </div>
+
+        <!-- Bestätigungsdialog -->
+        <div v-if="showDeleteConfirm" style="padding:var(--sp-5) var(--sp-6);border-top:1px solid rgba(255,75,75,0.2);display:flex;flex-direction:column;gap:var(--sp-4);">
+          <p style="font-size:.875rem;color:var(--on-surface);">Bist du sicher? Dein Account wird permanent gelöscht.</p>
+          <div style="display:flex;gap:var(--sp-3);">
+            <button class="btn-danger" @click="confirmDelete" :disabled="userStore.loading">
+              <span class="material-symbols-outlined" style="font-size:1rem;">delete_forever</span>
+              {{ userStore.loading ? 'Wird gelöscht...' : 'Ja, Account löschen' }}
+            </button>
+            <button class="btn-edit" @click="showDeleteConfirm = false">Abbrechen</button>
+          </div>
         </div>
       </div>
 

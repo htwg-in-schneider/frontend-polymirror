@@ -230,7 +230,7 @@ onMounted(() => store.fetchMarketById(route.params.id));
           <div class="glass-panel">
             <h3 class="text-label-sm text-dim uppercase tracking-widest mb-4" style="letter-spacing:.2em;">Market Context</h3>
             <p class="text-body-md text-muted" style="line-height:1.7;">
-              Institutional inflows into ETH ETFs have accelerated by 22% over the last 48 hours. Market sentiment is pivoting towards a late-year rally as liquidity benchmarks hit multi-month highs.
+              {{ market?.description }}
             </p>
           </div>
           <div class="glass-panel">
