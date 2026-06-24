@@ -2299,6 +2299,56 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ---------------------------------------------------------------
+   30b. RESPONSIVE — TABLES & ADMIN
+--------------------------------------------------------------- */
+@media (max-width: 63.9rem) {
+  /* Data tables: ensure horizontal scroll with visual hint */
+  .data-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .data-table {
+    min-width: 36rem;
+  }
+  .data-table th,
+  .data-table td {
+    padding: var(--sp-2) var(--sp-3);
+    font-size: .75rem;
+  }
+}
+
+@media (max-width: 47.9rem) {
+  /* Admin tabs: scroll horizontally on small screens */
+  .admin-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    padding-bottom: var(--sp-2);
+  }
+  .admin-tab {
+    white-space: nowrap;
+    padding: var(--sp-2) var(--sp-4);
+    font-size: .75rem;
+  }
+
+  /* Admin panel header: stack buttons */
+  .admin-search-wrap input {
+    width: 8rem;
+  }
+
+  /* Data tables on very small: smaller min-width */
+  .data-table {
+    min-width: 30rem;
+  }
+
+  /* Leaderboard grid: compact */
+  .leaderboard-grid {
+    grid-template-columns: 40px minmax(0,1fr) 80px 80px 80px !important;
+    font-size: .75rem;
+  }
+}
+
+/* ---------------------------------------------------------------
    31. MISC UTILITIES
 --------------------------------------------------------------- */
 .relative  { position: relative; }

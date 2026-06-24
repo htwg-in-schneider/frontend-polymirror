@@ -1,12 +1,26 @@
 <script setup>
-import { computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
+import { useAuth0 } from '@auth0/auth0-vue';
 import { useMarketStore } from '@/stores/marketStore.js';
+import { useUserStore } from '@/stores/userStore.js';
+import axios from 'axios';
+import { API_BASE } from '@/config.js';
 
 const route = useRoute();
 const store = useMarketStore();
+const userStore = useUserStore();
+const { isAuthenticated, getAccessTokenSilently, loginWithRedirect } = useAuth0();
 
 const market = computed(() => store.currentMarket);
+
+// Trade state
+const selectedOption = ref('YES');
+const tradeAmount = ref('');
+const tradeStep = ref(1); // 1=input, 2=confirm, 3=success
+const tradeLoading = ref(false);
+const tradeError = ref('');
+const lastTrade = ref(null);
 
 const categoryIcon = computed(() => {
   const icons = {
@@ -17,6 +31,71 @@ const categoryIcon = computed(() => {
   };
   return icons[market.value?.category] ?? 'help_outline';
 });
+
+const currentOdds = computed(() => {
+  if (!market.value) return 50;
+  return selectedOption.value === 'YES' ? market.value.odds : (100 - market.value.odds);
+});
+
+const amount = computed(() => parseFloat(tradeAmount.value) || 0);
+
+const potentialPayout = computed(() => {
+  if (amount.value <= 0 || currentOdds.value <= 0) return 0;
+  return Math.round((amount.value / (currentOdds.value / 100)) * 100) / 100;
+});
+
+const potentialProfit = computed(() => {
+  return Math.round((potentialPayout.value - amount.value) * 100) / 100;
+});
+
+const profitPercent = computed(() => {
+  if (amount.value <= 0) return 0;
+  return Math.round((potentialProfit.value / amount.value) * 1000) / 10;
+});
+
+function selectOption(opt) {
+  selectedOption.value = opt;
+}
+
+function goToConfirm() {
+  tradeError.value = '';
+  if (!amount.value || amount.value <= 0) { tradeError.value = 'Enter a valid amount'; return; }
+  if (amount.value < 0.01) { tradeError.value = 'Minimum amount is 0.01 Poly'; return; }
+  if (amount.value > 1000000) { tradeError.value = 'Maximum amount is 1,000,000 Poly'; return; }
+  if (!userStore.currentUser) { tradeError.value = 'Please log in first'; return; }
+  if (amount.value > userStore.currentUser.balance) { tradeError.value = 'Insufficient balance'; return; }
+  tradeStep.value = 2;
+}
+
+async function executeTrade() {
+  tradeLoading.value = true;
+  tradeError.value = '';
+  try {
+    const token = await getAccessTokenSilently();
+    const { data } = await axios.post(`${API_BASE}/trades`, {
+      marketId: market.value.id,
+      option: selectedOption.value,
+      amount: amount.value,
+    }, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    lastTrade.value = data.trade;
+    userStore.currentUser.balance = data.newBalance;
+    tradeStep.value = 3;
+  } catch (e) {
+    tradeError.value = e.response?.data?.error || 'Trade failed';
+    tradeStep.value = 1;
+  } finally {
+    tradeLoading.value = false;
+  }
+}
+
+function resetTrade() {
+  tradeStep.value = 1;
+  tradeAmount.value = '';
+  tradeError.value = '';
+  lastTrade.value = null;
+}
 
 function formatVolume(vol) {
   if (!vol) return '$0';
@@ -29,88 +108,29 @@ onMounted(() => store.fetchMarketById(route.params.id));
 </script>
 
 <template>
-  <!-- TOP NAV -->
-  <nav class="top-nav">
-    <div class="flex items-center gap-8">
-      <router-link to="/" class="nav-brand">
-        <span class="material-symbols-outlined text-primary" style="font-size:1.75rem;">hub</span>
-        PolyMirror
-      </router-link>
-      <nav class="nav-links">
-        <router-link to="/markets" class="nav-link active">Markets</router-link>
-        <router-link to="/dashboard" class="nav-link">Dashboard</router-link>
-        <router-link to="/leaderboard" class="nav-link">Leaderboard</router-link>
-        <router-link to="/faq" class="nav-link">FAQ</router-link>
-      </nav>
-    </div>
-    <div class="nav-actions">
-      <div class="search-wrap hide-on-mobile">
-        <span class="material-symbols-outlined">search</span>
-        <input class="search-input" type="text" placeholder="Search markets...">
-      </div>
-      <div class="nav-balance">
-        <span class="nav-balance-label">Available</span>
-        <span class="nav-balance-value">0.00 Poly</span>
-      </div>
-      <router-link to="/profile" class="btn btn-ghost btn-sm" style="display:flex;align-items:center;gap:var(--sp-2);"><span class="material-symbols-outlined" style="font-size:1.1rem;">account_circle</span><span class="hide-on-mobile">Profile</span></router-link>
-      <router-link to="/register" class="btn btn-ghost btn-sm">Sign In</router-link>
-      <router-link to="/login" class="btn btn-primary">Log In</router-link>
-      <button class="nav-search-icon" aria-label="Search">
-        <span class="material-symbols-outlined">search</span>
-      </button>
-      <button class="hamburger-btn" aria-label="Menu">
-        <span class="material-symbols-outlined">menu</span>
-      </button>
-    </div>
-  </nav>
-
-  <div class="mobile-menu">
-    <router-link to="/markets" class="mobile-menu-link active">Markets</router-link>
-    <router-link to="/dashboard" class="mobile-menu-link">Dashboard</router-link>
-    <router-link to="/leaderboard" class="mobile-menu-link">Leaderboard</router-link>
-    <router-link to="/faq" class="mobile-menu-link">FAQ</router-link>
-    <div class="mobile-menu-divider"></div>
-    <div class="mobile-menu-actions">
-      <router-link to="/register" class="btn btn-secondary">Sign In</router-link>
-      <router-link to="/login" class="btn btn-primary">Log In</router-link>
-    </div>
-  </div>
-
-  <!-- SIDEBAR -->
-  <aside class="sidebar">
-    <nav class="sidebar-nav">
-      <a href="#" class="sidebar-link active"><span class="material-symbols-outlined">gavel</span><span class="sidebar-link-label">Politik</span></a>
-      <a href="#" class="sidebar-link"><span class="material-symbols-outlined">sports</span><span class="sidebar-link-label">Sport</span></a>
-      <a href="#" class="sidebar-link"><span class="material-symbols-outlined">currency_bitcoin</span><span class="sidebar-link-label">Krypto</span></a>
-      <a href="#" class="sidebar-link"><span class="material-symbols-outlined">public</span><span class="sidebar-link-label">Iran</span></a>
-      <a href="#" class="sidebar-link"><span class="material-symbols-outlined">payments</span><span class="sidebar-link-label">Finanzen</span></a>
-      <a href="#" class="sidebar-link"><span class="material-symbols-outlined">travel_explore</span><span class="sidebar-link-label">Geopolitik</span></a>
-      <a href="#" class="sidebar-link"><span class="material-symbols-outlined">memory</span><span class="sidebar-link-label">Technik</span></a>
-      <a href="#" class="sidebar-link"><span class="material-symbols-outlined">theater_comedy</span><span class="sidebar-link-label">Kultur</span></a>
-      <a href="#" class="sidebar-link"><span class="material-symbols-outlined">bar_chart</span><span class="sidebar-link-label">Economy</span></a>
-      <a href="#" class="sidebar-link"><span class="material-symbols-outlined">cloud</span><span class="sidebar-link-label">Wetter</span></a>
-      <a href="#" class="sidebar-link"><span class="material-symbols-outlined">tag</span><span class="sidebar-link-label">Erwähnungen</span></a>
-      <a href="#" class="sidebar-link"><span class="material-symbols-outlined">how_to_vote</span><span class="sidebar-link-label">Wahlen</span></a>
-    </nav>
-  </aside>
-
-  <!-- MAIN -->
-  <main class="page-with-sidebar app-main">
-    <div class="container" style="padding-inline:0;max-width:100%;">
+  <main class="page-with-sidebar app-main" style="padding-top:var(--nav-height);">
+    <div class="container" style="padding-inline:var(--sp-6);max-width:80rem;">
       <div class="detail-grid">
 
         <!-- Market Header -->
         <div class="glass-panel detail-market-header" style="position:relative;">
           <div style="position:absolute;top:var(--sp-4);right:var(--sp-4);">
-            <span class="badge-live">Live Market</span>
+            <span v-if="market?.resolved" class="badge-resolved">
+              <span class="material-symbols-outlined" style="font-size:.875rem;">check_circle</span>
+              Resolved — {{ market.outcome }}
+            </span>
+            <span v-else class="badge-live">Live Market</span>
           </div>
           <div class="flex items-center gap-2 mb-4 text-primary">
             <span class="material-symbols-outlined" style="font-size:.875rem;">{{ categoryIcon }}</span>
             <span class="text-label-sm uppercase" style="letter-spacing:.2em;">{{ market?.category }}</span>
           </div>
-          <h1 class="text-headline-lg" style="font-size:clamp(1.5rem,3vw,2.25rem);line-height:1.2;margin-bottom:var(--sp-6);text-shadow:0 0 8px rgba(173,198,255,0.3);">
-            {{ market?.title }}
-          </h1>
+          <div style="display:flex;align-items:flex-start;gap:var(--sp-4);margin-bottom:var(--sp-6);">
+            <img v-if="market?.imageUrl" :src="market.imageUrl" alt="" style="width:3.5rem;height:3.5rem;border-radius:var(--radius-md, 8px);object-fit:cover;flex-shrink:0;margin-top:4px;">
+            <h1 class="text-headline-lg" style="font-size:clamp(1.5rem,3vw,2.25rem);line-height:1.2;text-shadow:0 0 8px rgba(173,198,255,0.3);">
+              {{ market?.title }}
+            </h1>
+          </div>
           <div class="flex items-end gap-8" style="flex-wrap:wrap;">
             <div>
               <p class="text-label-sm text-dim uppercase tracking-widest" style="margin-bottom:var(--sp-1);">Current Probability</p>
@@ -129,14 +149,10 @@ onMounted(() => store.fetchMarketById(route.params.id));
           <div class="glass-panel chart-panel">
             <div class="chart-controls">
               <div class="chart-tab-group">
-                <button class="chart-tab active">Probability</button>
-                <button class="chart-tab">Volume</button>
-                <button class="chart-tab">Order Book</button>
+                <span class="chart-tab active">Probability</span>
               </div>
               <div class="chart-range-group">
-                <button class="chart-range-btn">1H</button>
-                <button class="chart-range-btn active">1D</button>
-                <button class="chart-range-btn">1W</button>
+                <span class="chart-range-btn active">ALL</span>
               </div>
             </div>
             <div class="chart-area">
@@ -154,10 +170,6 @@ onMounted(() => store.fetchMarketById(route.params.id));
                   d="M0 200 Q 50 190, 100 210 T 200 175 T 300 230 T 400 140 T 500 165 T 600 110 T 700 125 T 800 70 L 800 300 L 0 300 Z"
                   fill="url(#chartFill)"/>
               </svg>
-              <div class="chart-tooltip" style="top:2.5rem;left:60%;">
-                <p class="text-label-sm text-dim">NOV 14, 2:00 PM</p>
-                <p class="text-title-md text-primary">64.2% Chance</p>
-              </div>
             </div>
           </div>
         </section>
@@ -165,63 +177,172 @@ onMounted(() => store.fetchMarketById(route.params.id));
         <!-- Right: Trade Slip -->
         <aside>
           <div class="glass-panel trade-slip sticky-top">
-            <h2 class="text-headline-md flex items-center gap-2 mb-6">
-              <span class="material-symbols-outlined text-primary-cont">bolt</span>
-              Execute Position
-            </h2>
-            <div class="trade-slip-yes-no">
-              <div style="display:flex;flex-direction:column;align-items:center;gap:var(--sp-1);">
-                <button class="btn-yes">YES</button>
-                <span class="text-label-sm text-dim">{{ market?.odds }}¢</span>
+
+            <!-- Resolved State -->
+            <template v-if="market?.resolved">
+              <div style="text-align:center;padding:var(--sp-6) 0;">
+                <span class="material-symbols-outlined" style="font-size:3rem;color:var(--outline);margin-bottom:var(--sp-4);display:block;">lock</span>
+                <h2 class="text-headline-md" style="margin-bottom:var(--sp-2);">Market Resolved</h2>
+                <p style="font-size:.85rem;color:var(--on-surface-variant);margin-bottom:var(--sp-6);">This market has been settled.</p>
+                <div style="display:inline-flex;align-items:center;gap:var(--sp-2);padding:var(--sp-3) var(--sp-6);border-radius:var(--radius-lg);font-weight:700;font-size:1.1rem;"
+                  :style="{ background: market.outcome === 'YES' ? 'rgba(76,175,80,0.15)' : 'rgba(255,107,107,0.15)', color: market.outcome === 'YES' ? '#4caf50' : '#ff6b6b', border: market.outcome === 'YES' ? '1px solid rgba(76,175,80,0.3)' : '1px solid rgba(255,107,107,0.3)' }">
+                  Outcome: {{ market.outcome }}
+                </div>
               </div>
-              <div style="display:flex;flex-direction:column;align-items:center;gap:var(--sp-1);">
-                <button class="btn-no">NO</button>
-                <span class="text-label-sm text-dim">{{ market ? 100 - market.odds : 0 }}¢</span>
+            </template>
+
+            <!-- Step 1: Input -->
+            <template v-else-if="tradeStep === 1">
+              <h2 class="text-headline-md flex items-center gap-2 mb-6">
+                <span class="material-symbols-outlined text-primary-cont">bolt</span>
+                Execute Position
+              </h2>
+
+              <div v-if="tradeError" style="color:#ff6b6b;font-size:.8rem;padding:var(--sp-3);border:1px solid rgba(255,107,107,0.3);border-radius:var(--radius-md);margin-bottom:var(--sp-4);">
+                {{ tradeError }}
               </div>
-            </div>
-            <div class="form-group mb-8">
-              <label class="form-label-muted">Amount (USDC)</label>
-              <div style="position:relative;">
-                <input class="form-input-number" type="number" placeholder="0.00" style="padding-right:4rem;">
-                <span style="position:absolute;right:var(--sp-4);top:50%;transform:translateY(-50%);font-family:var(--font-label);font-size:.8rem;color:var(--outline);font-weight:700;">USDC</span>
+
+              <div class="trade-slip-yes-no">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:var(--sp-1);">
+                  <button class="btn-yes" :class="{ active: selectedOption === 'YES' }" @click="selectOption('YES')">YES</button>
+                  <span class="text-label-sm text-dim">{{ market?.odds }}¢</span>
+                </div>
+                <div style="display:flex;flex-direction:column;align-items:center;gap:var(--sp-1);">
+                  <button class="btn-no" :class="{ active: selectedOption === 'NO' }" @click="selectOption('NO')">NO</button>
+                  <span class="text-label-sm text-dim">{{ market ? (100 - market.odds).toFixed(1) : 0 }}¢</span>
+                </div>
               </div>
-            </div>
-            <div class="trade-calculation mb-8">
-              <div class="trade-calc-row">
-                <span class="trade-calc-label">Shares to Receive</span>
-                <span class="trade-calc-value">153.84</span>
+
+              <div class="form-group mb-8">
+                <label class="form-label-muted">Amount (Poly)</label>
+                <div style="position:relative;">
+                  <input v-model="tradeAmount" class="form-input-number" type="number" placeholder="0.00" min="1" step="1" style="padding-right:4rem;">
+                  <span style="position:absolute;right:var(--sp-4);top:50%;transform:translateY(-50%);font-family:var(--font-label);font-size:.8rem;color:var(--outline);font-weight:700;">POLY</span>
+                </div>
+                <p v-if="isAuthenticated && userStore.currentUser" style="font-size:.7rem;color:var(--on-surface-variant);margin-top:var(--sp-2);">
+                  Balance: <span style="color:var(--primary);font-weight:700;">{{ userStore.currentUser.balance?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} Poly</span>
+                </p>
               </div>
-              <div class="trade-calc-row">
-                <span class="trade-calc-label">Potential Return</span>
-                <span style="font-family:var(--font-headline);font-weight:700;color:var(--on-surface);font-size:.7rem;">$153.84 (+53.8%)</span>
+
+              <div v-if="amount > 0" class="trade-calculation mb-8">
+                <div class="trade-calc-row">
+                  <span class="trade-calc-label">Your Odds</span>
+                  <span class="trade-calc-value">{{ currentOdds.toFixed(1) }}%</span>
+                </div>
+                <div class="trade-calc-row">
+                  <span class="trade-calc-label">Potential Payout</span>
+                  <span style="font-family:var(--font-headline);font-weight:700;color:var(--on-surface);font-size:.7rem;">{{ potentialPayout.toFixed(2) }} Poly</span>
+                </div>
+                <div class="trade-calc-row">
+                  <span class="trade-calc-label">Potential Profit</span>
+                  <span style="font-family:var(--font-headline);font-weight:700;color:#4caf50;font-size:.7rem;">+{{ potentialProfit.toFixed(2) }} Poly (+{{ profitPercent }}%)</span>
+                </div>
               </div>
-            </div>
-            <button class="btn btn-primary" style="width:100%;padding:var(--sp-4);font-size:.875rem;border-radius:var(--radius-lg);justify-content:center;">
-              Buy Shares
-            </button>
+
+              <template v-if="isAuthenticated">
+                <button class="btn btn-primary" style="width:100%;padding:var(--sp-4);font-size:.875rem;border-radius:var(--radius-lg);justify-content:center;" @click="goToConfirm" :disabled="amount <= 0">
+                  Buy {{ selectedOption }} Shares
+                </button>
+              </template>
+              <template v-else>
+                <button class="btn btn-primary" style="width:100%;padding:var(--sp-4);font-size:.875rem;border-radius:var(--radius-lg);justify-content:center;" @click="loginWithRedirect()">
+                  Log in to Trade
+                </button>
+              </template>
+            </template>
+
+            <!-- Step 2: Confirm -->
+            <template v-if="tradeStep === 2">
+              <h2 class="text-headline-md flex items-center gap-2 mb-6">
+                <span class="material-symbols-outlined text-primary-cont">verified</span>
+                Confirm Trade
+              </h2>
+
+              <div style="display:flex;flex-direction:column;gap:var(--sp-4);padding:var(--sp-6);border-radius:var(--radius-lg);background:rgba(19,27,46,0.4);border:1px solid rgba(173,198,255,0.1);margin-bottom:var(--sp-6);">
+                <div class="trade-calc-row">
+                  <span class="trade-calc-label">Market</span>
+                  <span style="font-size:.75rem;color:var(--on-surface);font-weight:500;max-width:60%;text-align:right;">{{ market?.title }}</span>
+                </div>
+                <div class="trade-calc-row">
+                  <span class="trade-calc-label">Position</span>
+                  <span :style="{ color: selectedOption === 'YES' ? '#4caf50' : '#ff6b6b', fontWeight: 700, fontSize: '.85rem' }">{{ selectedOption }}</span>
+                </div>
+                <div class="trade-calc-row">
+                  <span class="trade-calc-label">Amount</span>
+                  <span style="font-weight:700;font-size:.85rem;color:var(--on-surface);">{{ amount.toFixed(2) }} Poly</span>
+                </div>
+                <div class="trade-calc-row">
+                  <span class="trade-calc-label">Odds</span>
+                  <span style="font-weight:600;font-size:.85rem;color:var(--on-surface);">{{ currentOdds.toFixed(1) }}%</span>
+                </div>
+                <div style="border-top:1px solid rgba(173,198,255,0.1);padding-top:var(--sp-3);"></div>
+                <div class="trade-calc-row">
+                  <span class="trade-calc-label">Potential Payout</span>
+                  <span style="font-family:var(--font-headline);font-weight:700;color:#4caf50;font-size:.85rem;">{{ potentialPayout.toFixed(2) }} Poly</span>
+                </div>
+              </div>
+
+              <div style="display:flex;gap:var(--sp-3);">
+                <button class="btn btn-secondary" style="flex:1;padding:var(--sp-4);font-size:.875rem;border-radius:var(--radius-lg);justify-content:center;" @click="tradeStep = 1">
+                  Back
+                </button>
+                <button class="btn btn-primary" style="flex:2;padding:var(--sp-4);font-size:.875rem;border-radius:var(--radius-lg);justify-content:center;" @click="executeTrade" :disabled="tradeLoading">
+                  {{ tradeLoading ? 'Processing...' : 'Confirm Trade' }}
+                </button>
+              </div>
+            </template>
+
+            <!-- Step 3: Success -->
+            <template v-if="tradeStep === 3">
+              <div style="text-align:center;padding:var(--sp-6) 0;">
+                <span class="material-symbols-outlined" style="font-size:3rem;color:#4caf50;margin-bottom:var(--sp-4);display:block;">check_circle</span>
+                <h2 class="text-headline-md" style="margin-bottom:var(--sp-2);">Trade Executed!</h2>
+                <p style="font-size:.85rem;color:var(--on-surface-variant);margin-bottom:var(--sp-6);">Your position has been placed successfully.</p>
+
+                <div style="display:flex;flex-direction:column;gap:var(--sp-3);padding:var(--sp-5);border-radius:var(--radius-lg);background:rgba(19,27,46,0.4);border:1px solid rgba(76,175,80,0.2);margin-bottom:var(--sp-6);text-align:left;">
+                  <div class="trade-calc-row">
+                    <span class="trade-calc-label">Position</span>
+                    <span :style="{ color: lastTrade?.option === 'YES' ? '#4caf50' : '#ff6b6b', fontWeight: 700 }">{{ lastTrade?.option }}</span>
+                  </div>
+                  <div class="trade-calc-row">
+                    <span class="trade-calc-label">Amount</span>
+                    <span style="font-weight:600;color:var(--on-surface);">{{ lastTrade?.amount?.toFixed(2) }} Poly</span>
+                  </div>
+                  <div class="trade-calc-row">
+                    <span class="trade-calc-label">Potential Payout</span>
+                    <span style="font-weight:700;color:#4caf50;">{{ lastTrade?.potentialPayout?.toFixed(2) }} Poly</span>
+                  </div>
+                  <div class="trade-calc-row">
+                    <span class="trade-calc-label">New Balance</span>
+                    <span style="font-weight:600;color:var(--primary);">{{ userStore.currentUser?.balance?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} Poly</span>
+                  </div>
+                </div>
+
+                <div style="display:flex;gap:var(--sp-3);">
+                  <button class="btn btn-secondary" style="flex:1;padding:var(--sp-3);font-size:.85rem;border-radius:var(--radius-lg);justify-content:center;" @click="resetTrade">
+                    New Trade
+                  </button>
+                  <router-link to="/dashboard" class="btn btn-primary" style="flex:1;padding:var(--sp-3);font-size:.85rem;border-radius:var(--radius-lg);justify-content:center;">
+                    Dashboard
+                  </router-link>
+                </div>
+              </div>
+            </template>
+
+            <!-- Polymarket Link -->
+            <a v-if="market?.eventSlug"
+              :href="'https://polymarket.com/event/' + market.eventSlug"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="polymarket-link"
+            >
+              <span style="font-weight:700;">Trade with real money on Polymarket</span>
+              <span class="material-symbols-outlined" style="font-size:1rem;">open_in_new</span>
+            </a>
+
             <p class="text-center text-label-sm text-dim uppercase tracking-widest" style="margin-top:var(--sp-6);letter-spacing:.15em;">
               Secured by PolyMirror Protocol
             </p>
-            <div style="margin-top:var(--sp-8);padding-top:var(--sp-6);border-top:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;align-items:center;gap:var(--sp-3);">
-              <p style="font-size:.7rem;color:var(--on-surface-variant);letter-spacing:.05em;">Want to trade with real money?</p>
-              <a href="#" style="display:inline-flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2) var(--sp-5);border-radius:var(--radius-lg);border:1px solid rgba(77,142,255,0.3);color:var(--primary);font-family:var(--font-label);font-size:.75rem;font-weight:600;letter-spacing:.08em;text-decoration:none;">
-                Trade on Polymarket
-                <span class="material-symbols-outlined" style="font-size:.9rem;">open_in_new</span>
-              </a>
-            </div>
-            <div style="margin-top:var(--sp-6);padding:var(--sp-6);border-radius:var(--radius-lg);border:1px solid rgba(255,255,255,0.05);background:rgba(19,27,46,0.3);">
-              <h4 class="text-label-sm text-dim uppercase tracking-widest mb-4" style="letter-spacing:.2em;">Market Resolution</h4>
-              <ul style="display:flex;flex-direction:column;gap:var(--sp-3);">
-                <li style="display:flex;gap:var(--sp-2);font-size:.7rem;color:var(--on-surface-variant);line-height:1.5;">
-                  <span class="text-primary-cont">•</span>
-                  This market resolves YES if ETH/USD reaches or exceeds $5,000.00 at any point before Dec 31, 23:59:59 UTC.
-                </li>
-                <li style="display:flex;gap:var(--sp-2);font-size:.7rem;color:var(--on-surface-variant);line-height:1.5;">
-                  <span class="text-primary-cont">•</span>
-                  Resolution source: Chainlink Price Feed (Ethereum/USD).
-                </li>
-              </ul>
-            </div>
           </div>
         </aside>
 
@@ -238,15 +359,15 @@ onMounted(() => store.fetchMarketById(route.params.id));
             <div style="display:flex;flex-direction:column;gap:var(--sp-3);">
               <div class="trade-calc-row">
                 <span class="trade-calc-label">Total Volume</span>
-                <span class="font-label" style="font-family:var(--font-label);font-weight:600;">{{ formatVolume(market?.volume) }}</span>
+                <span style="font-family:var(--font-label);font-weight:600;">{{ formatVolume(market?.volume) }}</span>
               </div>
               <div class="trade-calc-row">
-                <span class="trade-calc-label">Unique Participants</span>
-                <span class="font-label" style="font-family:var(--font-label);font-weight:600;">12,842</span>
+                <span class="trade-calc-label">Category</span>
+                <span style="font-family:var(--font-label);font-weight:600;">{{ market?.category }}</span>
               </div>
               <div class="trade-calc-row">
-                <span class="trade-calc-label">Closing Date</span>
-                <span class="font-label" style="font-family:var(--font-label);font-weight:600;">DEC 31, 2024</span>
+                <span class="trade-calc-label">End Date</span>
+                <span style="font-family:var(--font-label);font-weight:600;">{{ market?.endDate || 'Open' }}</span>
               </div>
             </div>
           </div>
@@ -255,27 +376,44 @@ onMounted(() => store.fetchMarketById(route.params.id));
       </div>
     </div>
   </main>
-
-  <!-- FOOTER -->
-  <footer class="footer footer-app">
-    <div class="footer-bottom" style="max-width:80rem;margin-inline:auto;border-top:none;padding-top:0;">
-      <div class="flex gap-8">
-        <a href="#" class="footer-link" style="margin-bottom:0;">Whitepaper</a>
-        <a href="#" class="footer-link" style="margin-bottom:0;">Governance</a>
-        <a href="#" class="footer-link" style="margin-bottom:0;">Terms</a>
-        <a href="#" class="footer-link" style="margin-bottom:0;">Security</a>
-      </div>
-      <span class="footer-copyright">Polymirror Oracle v2.4</span>
-    </div>
-  </footer>
-
-  <!-- MOBILE NAV -->
-  <nav class="mobile-nav">
-    <router-link to="/markets" class="mobile-nav-item active"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">explore</span><span class="mobile-nav-label">Markets</span></router-link>
-    <router-link to="/dashboard" class="mobile-nav-item"><span class="material-symbols-outlined">dashboard</span><span class="mobile-nav-label">Dash</span></router-link>
-    <router-link to="/leaderboard" class="mobile-nav-item"><span class="material-symbols-outlined">leaderboard</span><span class="mobile-nav-label">Ranks</span></router-link>
-    <router-link to="/profile" class="mobile-nav-item"><span class="material-symbols-outlined">account_circle</span><span class="mobile-nav-label">Profile</span></router-link>
-  </nav>
 </template>
 
-<style scoped></style>
+<style scoped>
+.btn-yes.active { background: #4caf50; color: #fff; box-shadow: 0 0 12px rgba(76,175,80,0.4); }
+.btn-no.active { background: #ff6b6b; color: #fff; box-shadow: 0 0 12px rgba(255,107,107,0.4); }
+.polymarket-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-6);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--on-surface-variant);
+  font-size: .8rem;
+  text-decoration: none;
+  transition: all 0.15s;
+}
+.polymarket-link:hover {
+  background: rgba(77, 142, 255, 0.1);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.badge-resolved {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  padding: .25rem .75rem;
+  border-radius: var(--radius-sm, 6px);
+  background: rgba(255, 152, 0, 0.15);
+  color: #ff9800;
+  border: 1px solid rgba(255, 152, 0, 0.3);
+  font-family: var(--font-label);
+  font-weight: 700;
+  font-size: .75rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+</style>

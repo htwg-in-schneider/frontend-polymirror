@@ -1,18 +1,18 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed } from 'vue';
+import { useAuth0 } from '@auth0/auth0-vue';
 import { useUserStore } from '@/stores/userStore.js';
 
-const router = useRouter();
+const { getAccessTokenSilently, logout } = useAuth0();
 const userStore = useUserStore();
 
-const editMode = ref(null); // 'username' | 'email' | 'password' | null
+const editMode = ref(null);
 const editUsername = ref('');
-const editEmail = ref('');
-const editPassword = ref('');
+const editGender = ref('');
 const editMsg = ref('');
 const editError = ref('');
 const showDeleteConfirm = ref(false);
+const avatarUploading = ref(false);
 
 const user = computed(() => userStore.currentUser);
 const initials = computed(() => {
@@ -20,12 +20,9 @@ const initials = computed(() => {
   return name.slice(0, 2).toUpperCase();
 });
 
-onMounted(async () => {
-  if (!user.value) {
-    router.push('/login');
-    return;
-  }
-  await userStore.loadProfile();
+const genderLabel = computed(() => {
+  const map = { male: 'Male', female: 'Female', neutral: 'Neutral' };
+  return map[user.value?.gender] || 'Not set';
 });
 
 function startEdit(field) {
@@ -33,8 +30,7 @@ function startEdit(field) {
   editMsg.value = '';
   editError.value = '';
   if (field === 'username') editUsername.value = user.value?.username || '';
-  if (field === 'email')    editEmail.value    = user.value?.email    || '';
-  if (field === 'password') editPassword.value = '';
+  if (field === 'gender') editGender.value = user.value?.gender || 'neutral';
 }
 
 async function saveEdit() {
@@ -42,21 +38,53 @@ async function saveEdit() {
   editMsg.value = '';
   const updates = {};
   if (editMode.value === 'username') updates.username = editUsername.value;
-  if (editMode.value === 'email')    updates.email    = editEmail.value;
-  if (editMode.value === 'password') updates.password = editPassword.value;
+  if (editMode.value === 'gender') updates.gender = editGender.value;
   try {
-    await userStore.updateProfile(updates);
-    editMsg.value = 'Gespeichert!';
+    await userStore.updateProfile(updates, getAccessTokenSilently);
+    editMsg.value = 'Saved!';
     editMode.value = null;
   } catch (e) {
     editError.value = e;
   }
 }
 
+async function handleAvatarUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  if (!allowedTypes.includes(file.type)) {
+    editError.value = 'Only JPEG, PNG, GIF or WebP images are allowed';
+    return;
+  }
+  if (file.size > 500000) {
+    editError.value = 'Image must be under 500KB';
+    return;
+  }
+  avatarUploading.value = true;
+  editError.value = '';
+  try {
+    const reader = new FileReader();
+    reader.onload = async () => {
+      await userStore.updateProfile({ avatarUrl: reader.result }, getAccessTokenSilently);
+      editMsg.value = 'Avatar updated!';
+      avatarUploading.value = false;
+    };
+    reader.readAsDataURL(file);
+  } catch (e) {
+    editError.value = 'Upload failed';
+    avatarUploading.value = false;
+  }
+}
+
+function removeAvatar() {
+  userStore.updateProfile({ avatarUrl: '' }, getAccessTokenSilently);
+  editMsg.value = 'Avatar removed';
+}
+
 async function confirmDelete() {
   try {
-    await userStore.deleteAccount();
-    router.push('/');
+    await userStore.deleteAccount(getAccessTokenSilently);
+    logout({ logoutParams: { returnTo: window.location.origin } });
   } catch (e) {
     editError.value = e;
     showDeleteConfirm.value = false;
@@ -67,51 +95,6 @@ async function confirmDelete() {
 <template>
   <div class="bg-glow-blob bg-glow-blob-tr"></div>
 
-  <!-- TOP NAVIGATION -->
-  <nav class="top-nav">
-    <div class="flex items-center gap-8">
-      <router-link to="/" class="nav-brand">
-        <span class="material-symbols-outlined text-primary" style="font-size:1.75rem;">hub</span>
-        PolyMirror
-      </router-link>
-      <nav class="nav-links">
-        <router-link to="/markets" class="nav-link">Markets</router-link>
-        <router-link to="/dashboard" class="nav-link">Dashboard</router-link>
-        <router-link to="/leaderboard" class="nav-link">Leaderboard</router-link>
-        <router-link to="/faq" class="nav-link">FAQ</router-link>
-      </nav>
-    </div>
-    <div class="nav-actions">
-      <div class="search-wrap hide-on-mobile">
-        <span class="material-symbols-outlined">search</span>
-        <input class="search-input" type="text" placeholder="Search markets...">
-      </div>
-      <div class="nav-balance">
-        <span class="nav-balance-label">Available</span>
-        <span class="nav-balance-value">0.00 Poly</span>
-      </div>
-      <router-link to="/profile" class="btn btn-ghost btn-sm" style="display:flex;align-items:center;gap:var(--sp-2);">
-        <span class="material-symbols-outlined" style="font-size:1.1rem;">account_circle</span>
-        <span class="hide-on-mobile">Profile</span>
-      </router-link>
-      <router-link to="/login" class="btn btn-primary">Log In</router-link>
-      <button class="nav-search-icon" aria-label="Search"><span class="material-symbols-outlined">search</span></button>
-      <button class="hamburger-btn" aria-label="Menu"><span class="material-symbols-outlined">menu</span></button>
-    </div>
-  </nav>
-
-  <div class="mobile-menu">
-    <router-link to="/markets" class="mobile-menu-link">Markets</router-link>
-    <router-link to="/dashboard" class="mobile-menu-link">Dashboard</router-link>
-    <router-link to="/leaderboard" class="mobile-menu-link">Leaderboard</router-link>
-    <router-link to="/faq" class="mobile-menu-link">FAQ</router-link>
-    <div class="mobile-menu-divider"></div>
-    <div class="mobile-menu-actions">
-      <router-link to="/profile" class="btn btn-secondary">Profile</router-link>
-      <router-link to="/login" class="btn btn-primary">Log In</router-link>
-    </div>
-  </div>
-
   <main style="padding-top:var(--nav-height);padding-bottom:var(--sp-24);">
 
     <!-- Page Header -->
@@ -120,22 +103,27 @@ async function confirmDelete() {
       <div style="position:relative;z-index:1;">
         <p class="section-eyebrow" style="text-align:center;font-size:1.5rem;letter-spacing:.05em;margin-bottom:var(--sp-6);">Account Settings</p>
         <div style="display:flex;justify-content:center;margin-bottom:var(--sp-5);">
-          <div class="profile-avatar-ring">
-            <span class="profile-avatar-initials">{{ initials }}</span>
-            <button style="position:absolute;bottom:-4px;right:-4px;width:2rem;height:2rem;border-radius:50%;background:var(--surface-high);border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;cursor:pointer;" title="Edit avatar">
-              <span class="material-symbols-outlined" style="font-size:0.9rem;color:var(--on-surface-variant);">edit</span>
-            </button>
-          </div>
+          <label class="profile-avatar-ring" style="cursor:pointer;" title="Click to upload avatar">
+            <img v-if="user?.avatarUrl" :src="user.avatarUrl" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">
+            <span v-else class="profile-avatar-initials">{{ initials }}</span>
+            <div class="avatar-overlay">
+              <span class="material-symbols-outlined" style="font-size:1.5rem;color:#fff;">photo_camera</span>
+            </div>
+            <input type="file" accept="image/*" style="display:none;" @change="handleAvatarUpload">
+          </label>
         </div>
+        <p v-if="avatarUploading" style="font-size:.75rem;color:var(--primary);margin-bottom:var(--sp-2);">Uploading...</p>
+        <button v-if="user?.avatarUrl" class="btn-edit" style="margin-bottom:var(--sp-3);font-size:.65rem;" @click="removeAvatar">Remove Avatar</button>
         <h1 style="font-family:var(--font-headline);font-size:clamp(1.75rem,4vw,2.5rem);font-weight:900;letter-spacing:-.02em;color:var(--primary);text-shadow:var(--glow-text);margin-bottom:var(--sp-2);">{{ user?.username }}</h1>
         <p style="font-family:var(--font-label);font-size:0.75rem;letter-spacing:0.15em;text-transform:uppercase;color:var(--on-surface-variant);">{{ user?.email }}</p>
+        <p v-if="user?.role" style="font-family:var(--font-label);font-size:0.625rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--primary);opacity:0.7;margin-top:var(--sp-2);">{{ user?.role }}</p>
       </div>
     </div>
 
     <!-- Settings sections -->
     <div class="profile-section" style="display:flex;flex-direction:column;gap:var(--sp-6);">
 
-      <!-- Feedback Nachrichten -->
+      <!-- Feedback -->
       <div v-if="editMsg" style="color:#4caf50;font-size:.85rem;padding:var(--sp-3);border:1px solid rgba(76,175,80,0.3);border-radius:var(--radius-md);text-align:center;">{{ editMsg }}</div>
       <div v-if="editError" style="color:#ff6b6b;font-size:.85rem;padding:var(--sp-3);border:1px solid rgba(255,107,107,0.3);border-radius:var(--radius-md);text-align:center;">{{ editError }}</div>
 
@@ -143,18 +131,13 @@ async function confirmDelete() {
       <div class="settings-card">
         <p class="settings-card-title">Account Information</p>
 
-        <!-- Email -->
+        <!-- Email (read-only, managed by Auth0) -->
         <div class="settings-row">
           <div>
             <p class="settings-row-label">Email</p>
-            <p v-if="editMode !== 'email'" class="settings-row-value">{{ user?.email }}</p>
-            <div v-else style="display:flex;gap:var(--sp-2);margin-top:var(--sp-2);">
-              <input class="form-input" v-model="editEmail" type="email" style="flex:1;padding:var(--sp-2) var(--sp-3);font-size:.875rem;">
-              <button class="btn-edit" @click="saveEdit">Speichern</button>
-              <button class="btn-edit" @click="editMode=null">Abbrechen</button>
-            </div>
+            <p class="settings-row-value">{{ user?.email }}</p>
           </div>
-          <button v-if="editMode !== 'email'" class="btn-edit" @click="startEdit('email')"><span class="material-symbols-outlined" style="font-size:0.875rem;">edit</span>Edit</button>
+          <span style="font-family:var(--font-label);font-size:0.625rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--outline);background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:var(--radius-sm);padding:var(--sp-1) var(--sp-2);">Auth0</span>
         </div>
 
         <!-- Username -->
@@ -163,12 +146,36 @@ async function confirmDelete() {
             <p class="settings-row-label">Username</p>
             <p v-if="editMode !== 'username'" class="settings-row-value">{{ user?.username }}</p>
             <div v-else style="display:flex;gap:var(--sp-2);margin-top:var(--sp-2);">
-              <input class="form-input" v-model="editUsername" type="text" style="flex:1;padding:var(--sp-2) var(--sp-3);font-size:.875rem;">
-              <button class="btn-edit" @click="saveEdit">Speichern</button>
-              <button class="btn-edit" @click="editMode=null">Abbrechen</button>
+              <input class="form-input" v-model="editUsername" type="text" maxlength="50" style="flex:1;padding:var(--sp-2) var(--sp-3);font-size:.875rem;">
+              <button class="btn-edit" @click="saveEdit">Save</button>
+              <button class="btn-edit" @click="editMode=null">Cancel</button>
             </div>
           </div>
           <button v-if="editMode !== 'username'" class="btn-edit" @click="startEdit('username')"><span class="material-symbols-outlined" style="font-size:0.875rem;">edit</span>Edit</button>
+        </div>
+
+        <!-- Gender -->
+        <div class="settings-row">
+          <div>
+            <p class="settings-row-label">Gender</p>
+            <p v-if="editMode !== 'gender'" class="settings-row-value">{{ genderLabel }}</p>
+            <div v-else style="display:flex;gap:var(--sp-2);margin-top:var(--sp-2);">
+              <div class="gender-select">
+                <button :class="['gender-option', { active: editGender === 'male' }]" @click="editGender = 'male'">
+                  <span class="material-symbols-outlined">male</span> Male
+                </button>
+                <button :class="['gender-option', { active: editGender === 'female' }]" @click="editGender = 'female'">
+                  <span class="material-symbols-outlined">female</span> Female
+                </button>
+                <button :class="['gender-option', { active: editGender === 'neutral' }]" @click="editGender = 'neutral'">
+                  <span class="material-symbols-outlined">radio_button_unchecked</span> Neutral
+                </button>
+              </div>
+              <button class="btn-edit" @click="saveEdit">Save</button>
+              <button class="btn-edit" @click="editMode=null">Cancel</button>
+            </div>
+          </div>
+          <button v-if="editMode !== 'gender'" class="btn-edit" @click="startEdit('gender')"><span class="material-symbols-outlined" style="font-size:0.875rem;">edit</span>Edit</button>
         </div>
 
         <!-- User ID -->
@@ -178,59 +185,19 @@ async function confirmDelete() {
         </div>
       </div>
 
-      <!-- 2. Security -->
+      <!-- 2. Security (managed by Auth0) -->
       <div class="settings-card">
         <p class="settings-card-title">Security</p>
         <div class="settings-row">
           <div>
             <p class="settings-row-label">Password</p>
-            <p v-if="editMode !== 'password'" class="settings-row-value" style="letter-spacing:.15em;">••••••••••••</p>
-            <div v-else style="display:flex;gap:var(--sp-2);margin-top:var(--sp-2);">
-              <input class="form-input" v-model="editPassword" type="password" placeholder="Neues Passwort" style="flex:1;padding:var(--sp-2) var(--sp-3);font-size:.875rem;">
-              <button class="btn-edit" @click="saveEdit">Speichern</button>
-              <button class="btn-edit" @click="editMode=null">Abbrechen</button>
-            </div>
+            <p class="settings-row-value muted">Managed by Auth0</p>
           </div>
-          <button v-if="editMode !== 'password'" class="btn-edit" @click="startEdit('password')"><span class="material-symbols-outlined" style="font-size:0.875rem;">lock</span>Change</button>
+          <span style="font-family:var(--font-label);font-size:0.625rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--outline);background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:var(--radius-sm);padding:var(--sp-1) var(--sp-2);">Auth0</span>
         </div>
       </div>
 
-      <!-- 3. Preferences -->
-      <div class="settings-card">
-        <p class="settings-card-title">Preferences</p>
-        <div class="settings-row">
-          <div><p class="settings-row-label">Email Notifications</p><p class="settings-row-value muted">Market updates and results</p></div>
-          <div class="toggle-wrap">
-            <span class="toggle-label" id="notif-label">On</span>
-            <label class="toggle" aria-label="Email Notifications">
-              <input type="checkbox" checked @change="(e) => e.target.previousElementSibling.textContent = e.target.checked ? 'On' : 'Off'">
-              <span class="toggle-track"></span>
-            </label>
-          </div>
-        </div>
-        <div class="settings-row">
-          <div><p class="settings-row-label">Trade Confirmations</p><p class="settings-row-value muted">Confirm before placing bets</p></div>
-          <div class="toggle-wrap">
-            <span class="toggle-label">On</span>
-            <label class="toggle" aria-label="Trade Confirmations">
-              <input type="checkbox" checked>
-              <span class="toggle-track"></span>
-            </label>
-          </div>
-        </div>
-        <div class="settings-row">
-          <div><p class="settings-row-label">Leaderboard Visibility</p><p class="settings-row-value muted">Show profile on leaderboard</p></div>
-          <div class="toggle-wrap">
-            <span class="toggle-label" style="min-width:3.5rem;">Public</span>
-            <label class="toggle" aria-label="Leaderboard Visibility">
-              <input type="checkbox" checked>
-              <span class="toggle-track"></span>
-            </label>
-          </div>
-        </div>
-      </div>
-
-      <!-- 4. Danger Zone -->
+      <!-- 3. Danger Zone -->
       <div class="settings-card danger">
         <p class="settings-card-title">Danger Zone</p>
         <div class="settings-row">
@@ -244,15 +211,14 @@ async function confirmDelete() {
           </button>
         </div>
 
-        <!-- Bestätigungsdialog -->
         <div v-if="showDeleteConfirm" style="padding:var(--sp-5) var(--sp-6);border-top:1px solid rgba(255,75,75,0.2);display:flex;flex-direction:column;gap:var(--sp-4);">
-          <p style="font-size:.875rem;color:var(--on-surface);">Bist du sicher? Dein Account wird permanent gelöscht.</p>
+          <p style="font-size:.875rem;color:var(--on-surface);">Are you sure? Your account will be permanently deleted.</p>
           <div style="display:flex;gap:var(--sp-3);">
             <button class="btn-danger" @click="confirmDelete" :disabled="userStore.loading">
               <span class="material-symbols-outlined" style="font-size:1rem;">delete_forever</span>
-              {{ userStore.loading ? 'Wird gelöscht...' : 'Ja, Account löschen' }}
+              {{ userStore.loading ? 'Deleting...' : 'Yes, delete account' }}
             </button>
-            <button class="btn-edit" @click="showDeleteConfirm = false">Abbrechen</button>
+            <button class="btn-edit" @click="showDeleteConfirm = false">Cancel</button>
           </div>
         </div>
       </div>
@@ -260,44 +226,24 @@ async function confirmDelete() {
     </div>
   </main>
 
-  <!-- FOOTER -->
-  <footer class="footer">
-    <div class="footer-grid">
-      <div class="footer-brand">
-        <div class="flex items-center gap-2" style="margin-bottom:var(--sp-4);">
-          <span class="material-symbols-outlined text-primary">hub</span>
-          <span style="font-family:var(--font-headline);font-size:1.125rem;font-weight:700;color:var(--on-surface);">PolyMirror</span>
-        </div>
-        <p>The precision prediction protocol for the next generation of analysts. Trade narratives, master the data, and own the future.</p>
-      </div>
-      <div>
-        <span class="footer-col-title">Protocol</span>
-        <a href="#" class="footer-link">Documentation</a>
-        <a href="#" class="footer-link">Terms of Service</a>
-        <a href="#" class="footer-link">Privacy Policy</a>
-      </div>
-      <div>
-        <span class="footer-col-title">Connect</span>
-        <a href="#" class="footer-link">Discord</a>
-        <a href="#" class="footer-link">Twitter / X</a>
-        <router-link to="/faq" class="footer-link">FAQ</router-link>
-      </div>
-    </div>
-    <div class="footer-bottom">
-      <span class="footer-copyright">&copy; 2024 PolyMirror. Powered by HTWG.</span>
-      <div class="flex gap-8 items-center">
-        <div class="footer-status"><div class="hero-pulse-dot"></div>Mainnet Live</div>
-        <div class="footer-status"><span class="material-symbols-outlined" style="font-size:.875rem;">terminal</span>v1.2.0-Alpha</div>
-      </div>
-    </div>
-  </footer>
-
   <!-- MOBILE NAV -->
   <nav class="mobile-nav">
-    <router-link to="/markets" class="mobile-nav-item"><span class="material-symbols-outlined">explore</span><span class="mobile-nav-label">Markets</span></router-link>
-    <router-link to="/dashboard" class="mobile-nav-item"><span class="material-symbols-outlined">dashboard</span><span class="mobile-nav-label">Dash</span></router-link>
-    <router-link to="/leaderboard" class="mobile-nav-item"><span class="material-symbols-outlined">leaderboard</span><span class="mobile-nav-label">Ranks</span></router-link>
-    <router-link to="/profile" class="mobile-nav-item active"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">account_circle</span><span class="mobile-nav-label">Profile</span></router-link>
+    <router-link to="/markets" class="mobile-nav-item">
+      <span class="material-symbols-outlined">explore</span>
+      <span class="mobile-nav-label">Markets</span>
+    </router-link>
+    <router-link to="/dashboard" class="mobile-nav-item">
+      <span class="material-symbols-outlined">dashboard</span>
+      <span class="mobile-nav-label">Dash</span>
+    </router-link>
+    <router-link to="/leaderboard" class="mobile-nav-item">
+      <span class="material-symbols-outlined">leaderboard</span>
+      <span class="mobile-nav-label">Ranks</span>
+    </router-link>
+    <router-link to="/profile" class="mobile-nav-item active">
+      <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">account_circle</span>
+      <span class="mobile-nav-label">Profile</span>
+    </router-link>
   </nav>
 </template>
 
@@ -324,6 +270,13 @@ async function confirmDelete() {
 .settings-card.danger .settings-card-title { color: var(--error); }
 .btn-danger { display: inline-flex; align-items: center; gap: var(--sp-2); font-family: var(--font-label); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--error); background: transparent; border: 1px solid rgba(255,180,171,0.3); border-radius: var(--radius-lg); padding: var(--sp-3) var(--sp-5); cursor: pointer; transition: background var(--t-base), border-color var(--t-base); flex-shrink: 0; }
 .btn-danger:hover { background: rgba(255,180,171,0.08); border-color: rgba(255,180,171,0.5); }
-.profile-avatar-ring { width: 6.25rem; height: 6.25rem; border-radius: 50%; background: linear-gradient(135deg, rgba(173,198,255,0.2), rgba(160,120,255,0.15)); border: 2px solid rgba(173,198,255,0.25); display: flex; align-items: center; justify-content: center; position: relative; }
+.profile-avatar-ring { width: 6.25rem; height: 6.25rem; border-radius: 50%; background: linear-gradient(135deg, rgba(173,198,255,0.2), rgba(160,120,255,0.15)); border: 2px solid rgba(173,198,255,0.25); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
 .profile-avatar-initials { font-family: var(--font-headline); font-size: 2rem; font-weight: 900; color: var(--primary); letter-spacing: -.02em; }
+.avatar-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s; border-radius: 50%; }
+.profile-avatar-ring:hover .avatar-overlay { opacity: 1; }
+.gender-select { display: flex; gap: var(--sp-2); }
+.gender-option { display: flex; align-items: center; gap: var(--sp-1); padding: var(--sp-2) var(--sp-3); background: rgba(30, 33, 40, 0.8); border: 1px solid rgba(66, 71, 84, 0.3); border-radius: var(--radius-md); color: var(--on-surface-variant); font-size: .8rem; cursor: pointer; transition: all 0.15s; }
+.gender-option .material-symbols-outlined { font-size: 1rem; }
+.gender-option:hover { border-color: var(--primary); color: var(--on-surface); }
+.gender-option.active { background: rgba(77, 142, 255, 0.1); border-color: var(--primary); color: var(--primary); }
 </style>

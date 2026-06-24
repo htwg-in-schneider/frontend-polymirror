@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia';
 import axios from 'axios';
+import { API_BASE } from '@/config.js';
 
-const API = 'http://localhost:8080/api';
+const API = API_BASE;
 
 export const useMarketStore = defineStore('market', {
   state: () => ({

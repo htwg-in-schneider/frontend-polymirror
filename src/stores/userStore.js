@@ -1,107 +1,82 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import axios from 'axios';
+import { API_BASE } from '@/config.js';
 
-const API = 'http://localhost:8080/api/users';
+const API = `${API_BASE}/users`;
 
 export const useUserStore = defineStore('user', () => {
-  const currentUser = ref(JSON.parse(localStorage.getItem('polymirror_user') || 'null'));
+  const currentUser = ref(null);
   const loading = ref(false);
   const error = ref(null);
 
-  function setUser(user) {
-    currentUser.value = user;
-    if (user) {
-      localStorage.setItem('polymirror_user', JSON.stringify(user));
-    } else {
-      localStorage.removeItem('polymirror_user');
-    }
-  }
+  const isLoggedIn = computed(() => !!currentUser.value);
+  const isAdmin = computed(() => currentUser.value?.role === 'ADMIN');
 
-  // CREATE — Registrierung
-  async function register(username, email, password) {
+  // Load user profile from backend using Auth0 token
+  async function loadProfile(getAccessTokenSilently) {
     loading.value = true;
     error.value = null;
     try {
-      const { data } = await axios.post(API, { username, email, password });
-      setUser(data);
+      const token = await getAccessTokenSilently();
+      const { data } = await axios.get(`${API}/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      currentUser.value = data;
       return data;
     } catch (e) {
-      error.value = e.response?.data?.error || 'Registrierung fehlgeschlagen';
+      if (e.response?.status === 403 && e.response?.data?.error === 'Account is banned') {
+        error.value = 'banned';
+        currentUser.value = { banned: true, banReason: e.response.data.banReason, id: e.response.data.userId };
+      } else {
+        error.value = 'Could not load profile';
+        currentUser.value = null;
+      }
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  // Update username
+  async function updateProfile(updates, getAccessTokenSilently) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const token = await getAccessTokenSilently();
+      const { data } = await axios.put(`${API}/me`, updates, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      currentUser.value = data;
+      return data;
+    } catch (e) {
+      error.value = e.response?.data?.error || 'Update failed';
       throw error.value;
     } finally {
       loading.value = false;
     }
   }
 
-  // LOGIN
-  async function login(email, password) {
+  // Delete own account
+  async function deleteAccount(getAccessTokenSilently) {
     loading.value = true;
     error.value = null;
     try {
-      const { data } = await axios.post(`${API}/login`, { email, password });
-      setUser(data);
-      return data;
+      const token = await getAccessTokenSilently();
+      await axios.delete(`${API}/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      currentUser.value = null;
     } catch (e) {
-      error.value = e.response?.data?.error || 'Login fehlgeschlagen';
+      error.value = 'Delete failed';
       throw error.value;
     } finally {
       loading.value = false;
     }
   }
 
-  // READ — Profil neu laden
-  async function loadProfile() {
-    if (!currentUser.value?.id) return;
-    loading.value = true;
-    error.value = null;
-    try {
-      const { data } = await axios.get(`${API}/${currentUser.value.id}`);
-      setUser(data);
-      return data;
-    } catch (e) {
-      error.value = 'Profil konnte nicht geladen werden';
-    } finally {
-      loading.value = false;
-    }
+  function clearUser() {
+    currentUser.value = null;
   }
 
-  // UPDATE — Profil bearbeiten
-  async function updateProfile(updates) {
-    if (!currentUser.value?.id) return;
-    loading.value = true;
-    error.value = null;
-    try {
-      const { data } = await axios.put(`${API}/${currentUser.value.id}`, updates);
-      setUser(data);
-      return data;
-    } catch (e) {
-      error.value = e.response?.data?.error || 'Update fehlgeschlagen';
-      throw error.value;
-    } finally {
-      loading.value = false;
-    }
-  }
-
-  // DELETE — Account löschen
-  async function deleteAccount() {
-    if (!currentUser.value?.id) return;
-    loading.value = true;
-    error.value = null;
-    try {
-      await axios.delete(`${API}/${currentUser.value.id}`);
-      setUser(null);
-    } catch (e) {
-      error.value = 'Löschen fehlgeschlagen';
-      throw error.value;
-    } finally {
-      loading.value = false;
-    }
-  }
-
-  function logout() {
-    setUser(null);
-  }
-
-  return { currentUser, loading, error, register, login, loadProfile, updateProfile, deleteAccount, logout };
+  return { currentUser, loading, error, isLoggedIn, isAdmin, loadProfile, updateProfile, deleteAccount, clearUser };
 });

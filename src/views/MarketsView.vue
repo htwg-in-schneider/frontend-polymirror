@@ -1,8 +1,11 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useMarketStore } from '@/stores/marketStore.js';
+import axios from 'axios';
+import { API_BASE } from '@/config.js';
 
 const store = useMarketStore();
+const sidebarCategories = ref([]);
 
 const CATEGORY_ICONS = {
   Politics: 'gavel', Sports: 'sports', Crypto: 'currency_bitcoin',
@@ -32,6 +35,7 @@ function formatVolume(vol) {
 }
 
 const searchInput = ref('');
+const featuredMarket = ref(null);
 
 function submitSearch() {
   store.setSearch(searchInput.value.trim());
@@ -42,67 +46,25 @@ function clearSearch() {
   store.setSearch('');
 }
 
-onMounted(() => store.fetchGroups());
+onMounted(async () => {
+  store.fetchGroups();
+  try {
+    const { data } = await axios.get(`${API_BASE}/categories/visible`);
+    sidebarCategories.value = data;
+  } catch (e) {
+    console.error('Failed to load categories', e);
+  }
+  // Load featured market (highest volume single market)
+  try {
+    const { data } = await axios.get(`${API_BASE}/markets`, { params: { page: 0, size: 1 } });
+    if (data.content?.length) featuredMarket.value = data.content[0];
+  } catch (e) {
+    console.error('Failed to load featured market', e);
+  }
+});
 </script>
 
 <template>
-  <!-- TOP NAV -->
-  <nav class="top-nav">
-    <div class="flex items-center gap-8">
-      <router-link to="/" class="nav-brand">
-        <span class="material-symbols-outlined text-primary" style="font-size:1.75rem;">hub</span>
-        PolyMirror
-      </router-link>
-      <nav class="nav-links">
-        <router-link to="/markets" class="nav-link active">Markets</router-link>
-        <router-link to="/dashboard" class="nav-link">Dashboard</router-link>
-        <router-link to="/leaderboard" class="nav-link">Leaderboard</router-link>
-        <router-link to="/faq" class="nav-link">FAQ</router-link>
-      </nav>
-    </div>
-    <div class="nav-actions">
-      <div class="search-wrap hide-on-mobile">
-        <span class="material-symbols-outlined">search</span>
-        <input
-          v-model="searchInput"
-          class="search-input"
-          type="text"
-          placeholder="Search markets..."
-          @keydown.enter="submitSearch"
-        />
-      </div>
-      <div class="nav-balance">
-        <span class="nav-balance-label">Available</span>
-        <span class="nav-balance-value">0.00 Poly</span>
-      </div>
-      <router-link to="/profile" class="btn btn-ghost btn-sm" style="display:flex;align-items:center;gap:var(--sp-2);">
-        <span class="material-symbols-outlined" style="font-size:1.1rem;">account_circle</span>
-        <span class="hide-on-mobile">Profile</span>
-      </router-link>
-      <router-link to="/register" class="btn btn-ghost btn-sm">Sign In</router-link>
-      <router-link to="/login" class="btn btn-primary">Log In</router-link>
-      <button class="nav-search-icon" aria-label="Search" @click="submitSearch">
-        <span class="material-symbols-outlined">search</span>
-      </button>
-      <button class="hamburger-btn" aria-label="Menu">
-        <span class="material-symbols-outlined">menu</span>
-      </button>
-    </div>
-  </nav>
-
-  <!-- MOBILE MENU -->
-  <div class="mobile-menu">
-    <a href="/markets" class="mobile-menu-link active">Markets</a>
-    <router-link to="/dashboard" class="mobile-menu-link">Dashboard</router-link>
-    <router-link to="/leaderboard" class="mobile-menu-link">Leaderboard</router-link>
-    <router-link to="/faq" class="mobile-menu-link">FAQ</router-link>
-    <div class="mobile-menu-divider"></div>
-    <div class="mobile-menu-actions">
-      <router-link to="/register" class="btn btn-secondary">Sign In</router-link>
-      <router-link to="/login" class="btn btn-primary">Log In</router-link>
-    </div>
-  </div>
-
   <!-- SIDEBAR -->
   <aside class="sidebar">
     <nav class="sidebar-nav">
@@ -111,110 +73,53 @@ onMounted(() => store.fetchGroups());
         <span class="sidebar-link-label">All</span>
       </button>
 
-      <button @click="store.filterByCategory('Politics')" :class="['sidebar-link', store.selectedCategory === 'Politics' ? 'active' : '']">
-        <span class="material-symbols-outlined">gavel</span>
-        <span class="sidebar-link-label">Politics</span>
-      </button>
-      <div v-if="store.selectedCategory === 'Politics'" class="sidebar-sub">
-        <button
-          v-for="sub in SUBCATEGORIES.Politics" :key="sub"
-          @click="store.setSubcategory(store.selectedSubcategory === sub ? '' : sub)"
-          :class="['sidebar-sub-link', store.selectedSubcategory === sub ? 'active' : '']"
-        >{{ sub }}</button>
-      </div>
-
-      <button @click="store.filterByCategory('Sports')" :class="['sidebar-link', store.selectedCategory === 'Sports' ? 'active' : '']">
-        <span class="material-symbols-outlined">sports</span>
-        <span class="sidebar-link-label">Sports</span>
-      </button>
-      <div v-if="store.selectedCategory === 'Sports'" class="sidebar-sub">
-        <button
-          v-for="sub in SUBCATEGORIES.Sports" :key="sub"
-          @click="store.setSubcategory(store.selectedSubcategory === sub ? '' : sub)"
-          :class="['sidebar-sub-link', store.selectedSubcategory === sub ? 'active' : '']"
-        >{{ sub }}</button>
-      </div>
-
-      <button @click="store.filterByCategory('Crypto')" :class="['sidebar-link', store.selectedCategory === 'Crypto' ? 'active' : '']">
-        <span class="material-symbols-outlined">currency_bitcoin</span>
-        <span class="sidebar-link-label">Crypto</span>
-      </button>
-      <div v-if="store.selectedCategory === 'Crypto'" class="sidebar-sub">
-        <button
-          v-for="sub in SUBCATEGORIES.Crypto" :key="sub"
-          @click="store.setSubcategory(store.selectedSubcategory === sub ? '' : sub)"
-          :class="['sidebar-sub-link', store.selectedSubcategory === sub ? 'active' : '']"
-        >{{ sub }}</button>
-      </div>
-
-      <button @click="store.filterByCategory('Geopolitics')" :class="['sidebar-link', store.selectedCategory === 'Geopolitics' ? 'active' : '']">
-        <span class="material-symbols-outlined">travel_explore</span>
-        <span class="sidebar-link-label">Geopolitics</span>
-      </button>
-
-      <button @click="store.filterByCategory('Finance')" :class="['sidebar-link', store.selectedCategory === 'Finance' ? 'active' : '']">
-        <span class="material-symbols-outlined">payments</span>
-        <span class="sidebar-link-label">Finance</span>
-      </button>
-
-      <button @click="store.filterByCategory('Tech')" :class="['sidebar-link', store.selectedCategory === 'Tech' ? 'active' : '']">
-        <span class="material-symbols-outlined">memory</span>
-        <span class="sidebar-link-label">Tech</span>
-      </button>
-      <div v-if="store.selectedCategory === 'Tech'" class="sidebar-sub">
-        <button
-          v-for="sub in SUBCATEGORIES.Tech" :key="sub"
-          @click="store.setSubcategory(store.selectedSubcategory === sub ? '' : sub)"
-          :class="['sidebar-sub-link', store.selectedSubcategory === sub ? 'active' : '']"
-        >{{ sub }}</button>
-      </div>
-
-      <button @click="store.filterByCategory('Culture')" :class="['sidebar-link', store.selectedCategory === 'Culture' ? 'active' : '']">
-        <span class="material-symbols-outlined">theater_comedy</span>
-        <span class="sidebar-link-label">Culture</span>
-      </button>
-      <div v-if="store.selectedCategory === 'Culture'" class="sidebar-sub">
-        <button
-          v-for="sub in SUBCATEGORIES.Culture" :key="sub"
-          @click="store.setSubcategory(store.selectedSubcategory === sub ? '' : sub)"
-          :class="['sidebar-sub-link', store.selectedSubcategory === sub ? 'active' : '']"
-        >{{ sub }}</button>
-      </div>
-
-      <button @click="store.filterByCategory('Economy')" :class="['sidebar-link', store.selectedCategory === 'Economy' ? 'active' : '']">
-        <span class="material-symbols-outlined">bar_chart</span>
-        <span class="sidebar-link-label">Economy</span>
-      </button>
-
-      <button @click="store.filterByCategory('Elections')" :class="['sidebar-link', store.selectedCategory === 'Elections' ? 'active' : '']">
-        <span class="material-symbols-outlined">how_to_vote</span>
-        <span class="sidebar-link-label">Elections</span>
-      </button>
-
-      <button @click="store.filterByCategory('Science')" :class="['sidebar-link', store.selectedCategory === 'Science' ? 'active' : '']">
-        <span class="material-symbols-outlined">biotech</span>
-        <span class="sidebar-link-label">Science</span>
-      </button>
+      <template v-for="cat in sidebarCategories" :key="cat.id">
+        <button @click="store.filterByCategory(cat.name)" :class="['sidebar-link', store.selectedCategory === cat.name ? 'active' : '']">
+          <span class="material-symbols-outlined">{{ categoryIcon(cat.name) }}</span>
+          <span class="sidebar-link-label">{{ cat.name }}</span>
+        </button>
+        <div v-if="SUBCATEGORIES[cat.name] && store.selectedCategory === cat.name" class="sidebar-sub">
+          <button
+            v-for="sub in SUBCATEGORIES[cat.name]" :key="sub"
+            @click="store.setSubcategory(store.selectedSubcategory === sub ? '' : sub)"
+            :class="['sidebar-sub-link', store.selectedSubcategory === sub ? 'active' : '']"
+          >{{ sub }}</button>
+        </div>
+      </template>
     </nav>
   </aside>
 
   <!-- MAIN CONTENT -->
   <main class="page-with-sidebar app-main">
 
+    <!-- Mobile Category Filter (visible only on mobile when sidebar is hidden) -->
+    <div class="mobile-category-bar">
+      <button @click="store.filterByCategory('')" :class="['mobile-cat-btn', store.selectedCategory === '' ? 'active' : '']">All</button>
+      <button v-for="cat in sidebarCategories" :key="cat.id" @click="store.filterByCategory(cat.name)" :class="['mobile-cat-btn', store.selectedCategory === cat.name ? 'active' : '']">
+        {{ cat.name }}
+      </button>
+    </div>
+
     <!-- Featured Market Hero -->
-    <div class="market-hero mb-12">
+    <router-link v-if="featuredMarket" :to="'/market/' + featuredMarket.id" class="market-hero mb-12" style="text-decoration:none;color:inherit;display:block;">
       <div class="market-hero-content">
         <div class="flex items-center gap-3 mb-4">
           <span class="badge-live">Featured Prediction</span>
-          <span class="text-label-sm text-dim" style="letter-spacing:.1em;text-transform:uppercase;">Ending in 14h 22m</span>
+          <span class="text-label-sm text-dim" style="letter-spacing:.1em;text-transform:uppercase;">
+            <span class="material-symbols-outlined" style="font-size:.8rem;vertical-align:middle;">{{ categoryIcon(featuredMarket.category) }}</span>
+            {{ featuredMarket.category }} · {{ formatVolume(featuredMarket.volume) }} Vol
+          </span>
         </div>
-        <h1 class="market-hero-title">Will Bitcoin hit $100k before May?</h1>
+        <div style="display:flex;align-items:flex-start;gap:var(--sp-4);">
+          <img v-if="featuredMarket.imageUrl" :src="featuredMarket.imageUrl" alt="" style="width:4rem;height:4rem;border-radius:var(--radius-md, 8px);object-fit:cover;flex-shrink:0;margin-top:4px;">
+          <h1 class="market-hero-title">{{ featuredMarket.title }}</h1>
+        </div>
         <div class="flex gap-4" style="flex-wrap:wrap;">
-          <button class="btn btn-primary">Bet YES (62%)</button>
-          <button class="btn btn-secondary">Bet NO (38%)</button>
+          <span class="btn btn-primary">Bet YES ({{ featuredMarket.odds }}%)</span>
+          <span class="btn btn-secondary">Bet NO ({{ (100 - featuredMarket.odds).toFixed(1) }}%)</span>
         </div>
       </div>
-    </div>
+    </router-link>
 
     <!-- Loading / Error -->
     <div v-if="store.loading" style="text-align:center;padding:var(--sp-16);color:var(--on-surface-variant);">
@@ -245,9 +150,12 @@ onMounted(() => store.fetchGroups());
               </div>
               <span class="text-label-sm text-dim">{{ formatVolume(group.markets[0].volume) }}</span>
             </div>
-            <h3 class="text-title-lg" style="line-height:1.4;margin-bottom:var(--sp-8);">
-              {{ group.markets[0].title }}
-            </h3>
+            <div class="market-title-row">
+              <img v-if="group.markets[0].imageUrl" :src="group.markets[0].imageUrl" class="market-thumb" alt="">
+              <h3 class="text-title-lg" style="line-height:1.4;">
+                {{ group.markets[0].title }}
+              </h3>
+            </div>
             <div class="odds-bar-wrapper">
               <div class="odds-labels">
                 <span class="odds-label-yes">YES {{ group.markets[0].odds }}%</span>
@@ -259,14 +167,14 @@ onMounted(() => store.fetchGroups());
             </div>
           </div>
           <div class="card-market-footer">
-            <button class="btn btn-secondary btn-sm" style="flex:1;" @click.prevent>Yes</button>
-            <button class="btn btn-ghost btn-sm" style="flex:1;" @click.prevent>No</button>
+            <span class="btn btn-secondary btn-sm" style="flex:1;">Yes</span>
+            <span class="btn btn-ghost btn-sm" style="flex:1;">No</span>
           </div>
         </router-link>
 
         <!-- Multi-outcome event: grouped card -->
         <div v-else class="card-market">
-          <div class="card-market-body">
+          <router-link :to="'/event/' + group.eventId" class="card-market-body event-card-link">
             <div class="flex justify-between items-start mb-4">
               <div class="badge-category">
                 <span class="material-symbols-outlined text-primary" style="font-size:.875rem;">{{ categoryIcon(group.category) }}</span>
@@ -274,9 +182,14 @@ onMounted(() => store.fetchGroups());
               </div>
               <span class="text-label-sm text-dim">{{ group.markets.length }} outcomes</span>
             </div>
-            <h3 class="text-title-lg" style="line-height:1.4;margin-bottom:var(--sp-8);">
-              {{ group.eventTitle }}
-            </h3>
+            <div class="market-title-row">
+              <img v-if="group.markets[0].imageUrl" :src="group.markets[0].imageUrl" class="market-thumb" alt="">
+              <h3 class="text-title-lg" style="line-height:1.4;">
+                {{ group.eventTitle }}
+              </h3>
+            </div>
+          </router-link>
+          <div class="card-market-body" style="padding-top:0;">
             <div class="outcome-list">
               <router-link
                 v-for="m in group.markets.slice(0, 5)"
@@ -287,9 +200,9 @@ onMounted(() => store.fetchGroups());
                 <span class="outcome-label">{{ m.title }}</span>
                 <span class="outcome-odds">{{ m.odds }}%</span>
               </router-link>
-              <span v-if="group.markets.length > 5" class="text-label-sm text-dim" style="padding:var(--sp-2) 0;">
+              <router-link v-if="group.markets.length > 5" :to="'/event/' + group.eventId" class="outcome-row" style="justify-content:center;color:var(--primary);font-weight:600;">
                 +{{ group.markets.length - 5 }} more
-              </span>
+              </router-link>
             </div>
           </div>
         </div>
@@ -312,18 +225,6 @@ onMounted(() => store.fetchGroups());
 
   </main>
 
-  <!-- FOOTER -->
-  <footer class="footer footer-app">
-    <div class="footer-bottom" style="max-width:80rem;margin-inline:auto;border-top:none;padding-top:0;">
-      <div class="flex gap-8">
-        <a href="#" class="footer-link" style="margin-bottom:0;">Whitepaper</a>
-        <a href="#" class="footer-link" style="margin-bottom:0;">Governance</a>
-        <a href="#" class="footer-link" style="margin-bottom:0;">Terms</a>
-        <a href="#" class="footer-link" style="margin-bottom:0;">Security</a>
-      </div>
-      <span class="footer-copyright">&copy; 2024 POLYMIRROR PROTOCOL. ALL RIGHTS RESERVED.</span>
-    </div>
-  </footer>
 
   <!-- MOBILE NAV -->
   <nav class="mobile-nav">
@@ -384,6 +285,66 @@ onMounted(() => store.fetchGroups());
   font-weight: 600;
   color: var(--primary);
   flex-shrink: 0;
+}
+
+/* Mobile category filter bar — hidden on desktop (sidebar visible) */
+.mobile-category-bar {
+  display: none;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  gap: var(--sp-2);
+  padding-bottom: var(--sp-4);
+  margin-bottom: var(--sp-4);
+}
+@media (max-width: 63.9rem) {
+  .mobile-category-bar { display: flex; }
+}
+.mobile-cat-btn {
+  white-space: nowrap;
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(66, 71, 84, 0.2);
+  background: rgba(30, 33, 40, 0.6);
+  color: var(--on-surface-variant);
+  font-family: var(--font-label);
+  font-size: .75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.mobile-cat-btn:hover {
+  border-color: var(--primary);
+  color: var(--on-surface);
+}
+.mobile-cat-btn.active {
+  background: rgba(77, 142, 255, 0.15);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.market-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-8);
+}
+.market-thumb {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-sm, 6px);
+  object-fit: cover;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.event-card-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  cursor: pointer;
+}
+.event-card-link:hover h3 {
+  color: var(--primary);
 }
 
 /* Sub-Kategorien in der Sidebar */

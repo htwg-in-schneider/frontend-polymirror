@@ -1,70 +1,75 @@
 <script setup>
+import { ref, computed, onMounted } from 'vue';
+import { useUserStore } from '@/stores/userStore.js';
+import axios from 'axios';
+import { API_BASE } from '@/config.js';
+
+const userStore = useUserStore();
+const leaderboard = ref([]);
+const loading = ref(true);
+const error = ref(null);
+
+const totalPlayers = computed(() => leaderboard.value.length);
+const totalVolume = computed(() => {
+  const sum = leaderboard.value.reduce((acc, e) => acc + (e.totalInvested || 0), 0);
+  if (sum >= 1_000_000) return (sum / 1_000_000).toFixed(1) + 'M';
+  if (sum >= 1_000) return (sum / 1_000).toFixed(0) + 'K';
+  return sum.toFixed(0);
+});
+const totalTrades = computed(() => leaderboard.value.reduce((acc, e) => acc + (e.tradeCount || 0), 0));
+
+const currentUserId = computed(() => userStore.currentUser?.id);
+
+const myEntry = computed(() => {
+  if (!currentUserId.value) return null;
+  return leaderboard.value.find(e => e.userId === currentUserId.value) || null;
+});
+
+function initials(name) {
+  if (!name) return '??';
+  return name.slice(0, 2).toUpperCase();
+}
+
+function formatProfit(val) {
+  const abs = Math.abs(val).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  return val >= 0 ? '+' + abs : '-' + abs;
+}
+
+function rankClass(rank) {
+  if (rank === 1) return 'leaderboard-rank-1';
+  if (rank === 2) return 'leaderboard-rank-2';
+  if (rank === 3) return 'leaderboard-rank-3';
+  return 'leaderboard-rank-other';
+}
+
+function rowStyle(rank, isMe) {
+  if (isMe) return 'border:1px solid rgba(208,188,255,0.2);background:rgba(160,120,255,0.06);';
+  if (rank === 1) return 'border:1px solid rgba(255,215,0,0.15);background:rgba(255,215,0,0.04);';
+  if (rank === 2) return 'border:1px solid rgba(192,192,192,0.1);background:rgba(192,192,192,0.03);';
+  if (rank === 3) return 'border:1px solid rgba(205,127,50,0.1);';
+  return '';
+}
+
+function stickyBg(rank, isMe) {
+  if (isMe) return 'background:color-mix(in srgb,var(--surface-low),rgba(160,120,255,0.1));';
+  if (rank === 1) return 'background:color-mix(in srgb,var(--surface-low),rgba(255,215,0,0.07));';
+  return '';
+}
+
+onMounted(async () => {
+  try {
+    const { data } = await axios.get(`${API_BASE}/leaderboard`);
+    leaderboard.value = data;
+  } catch (e) {
+    error.value = 'Failed to load leaderboard.';
+    console.error(e);
+  } finally {
+    loading.value = false;
+  }
+});
 </script>
 
 <template>
-  <div class="bg-glow-blob bg-glow-blob-tr"></div>
-
-  <!-- TOP NAV -->
-  <nav class="top-nav">
-    <div class="flex items-center gap-8">
-      <router-link to="/" class="nav-brand">
-        <span class="material-symbols-outlined text-primary" style="font-size:1.75rem;">hub</span>
-        PolyMirror
-      </router-link>
-      <nav class="nav-links">
-        <router-link to="/markets" class="nav-link">Markets</router-link>
-        <router-link to="/dashboard" class="nav-link">Dashboard</router-link>
-        <router-link to="/leaderboard" class="nav-link active">Leaderboard</router-link>
-        <router-link to="/faq" class="nav-link">FAQ</router-link>
-      </nav>
-    </div>
-    <div class="nav-actions">
-      <div class="search-wrap hide-on-mobile">
-        <span class="material-symbols-outlined">search</span>
-        <input class="search-input" type="text" placeholder="Search markets...">
-      </div>
-      <div class="nav-balance">
-        <span class="nav-balance-label">Available</span>
-        <span class="nav-balance-value">0.00 Poly</span>
-      </div>
-      <router-link to="/profile" class="btn btn-ghost btn-sm" style="display:flex;align-items:center;gap:var(--sp-2);"><span class="material-symbols-outlined" style="font-size:1.1rem;">account_circle</span><span class="hide-on-mobile">Profile</span></router-link>
-      <router-link to="/register" class="btn btn-ghost btn-sm">Sign In</router-link>
-      <router-link to="/login" class="btn btn-primary">Log In</router-link>
-      <button class="nav-search-icon" aria-label="Search"><span class="material-symbols-outlined">search</span></button>
-      <button class="hamburger-btn" aria-label="Menu"><span class="material-symbols-outlined">menu</span></button>
-    </div>
-  </nav>
-
-  <div class="mobile-menu">
-    <router-link to="/markets" class="mobile-menu-link">Markets</router-link>
-    <router-link to="/dashboard" class="mobile-menu-link">Dashboard</router-link>
-    <router-link to="/leaderboard" class="mobile-menu-link active">Leaderboard</router-link>
-    <router-link to="/faq" class="mobile-menu-link">FAQ</router-link>
-    <div class="mobile-menu-divider"></div>
-    <div class="mobile-menu-actions">
-      <router-link to="/register" class="btn btn-secondary">Sign In</router-link>
-      <router-link to="/login" class="btn btn-primary">Log In</router-link>
-    </div>
-  </div>
-
-  <!-- SIDEBAR -->
-  <aside class="sidebar">
-    <nav class="sidebar-nav">
-      <a href="#" class="sidebar-link active"><span class="material-symbols-outlined">gavel</span><span class="sidebar-link-label">Politik</span></a>
-      <a href="#" class="sidebar-link"><span class="material-symbols-outlined">sports</span><span class="sidebar-link-label">Sport</span></a>
-      <a href="#" class="sidebar-link"><span class="material-symbols-outlined">currency_bitcoin</span><span class="sidebar-link-label">Krypto</span></a>
-      <a href="#" class="sidebar-link"><span class="material-symbols-outlined">public</span><span class="sidebar-link-label">Iran</span></a>
-      <a href="#" class="sidebar-link"><span class="material-symbols-outlined">payments</span><span class="sidebar-link-label">Finanzen</span></a>
-      <a href="#" class="sidebar-link"><span class="material-symbols-outlined">travel_explore</span><span class="sidebar-link-label">Geopolitik</span></a>
-      <a href="#" class="sidebar-link"><span class="material-symbols-outlined">memory</span><span class="sidebar-link-label">Technik</span></a>
-      <a href="#" class="sidebar-link"><span class="material-symbols-outlined">theater_comedy</span><span class="sidebar-link-label">Kultur</span></a>
-      <a href="#" class="sidebar-link"><span class="material-symbols-outlined">bar_chart</span><span class="sidebar-link-label">Economy</span></a>
-      <a href="#" class="sidebar-link"><span class="material-symbols-outlined">cloud</span><span class="sidebar-link-label">Wetter</span></a>
-      <a href="#" class="sidebar-link"><span class="material-symbols-outlined">tag</span><span class="sidebar-link-label">Erwähnungen</span></a>
-      <a href="#" class="sidebar-link"><span class="material-symbols-outlined">how_to_vote</span><span class="sidebar-link-label">Wahlen</span></a>
-    </nav>
-  </aside>
-
   <main class="page-with-sidebar app-main" style="padding-bottom:var(--sp-24);">
 
     <!-- Header -->
@@ -73,112 +78,110 @@
       <div style="position:relative;z-index:1;">
         <p class="section-eyebrow" style="text-align:center;margin-bottom:var(--sp-4);">Global Rankings</p>
         <h1 style="font-family:var(--font-headline);font-size:clamp(2.5rem,5vw,4rem);font-weight:900;letter-spacing:-.02em;color:var(--primary);text-shadow:0 0 5px rgba(173,198,255,0.2);margin-bottom:var(--sp-4);">Leaderboard</h1>
-        <p class="text-muted" style="font-size:1rem;max-width:28rem;margin-inline:auto;">The world's most accurate prediction engineers, ranked by total profit and win rate.</p>
+        <p class="text-muted" style="font-size:1rem;max-width:28rem;margin-inline:auto;">Top prediction traders ranked by total profit.</p>
       </div>
     </div>
 
-    <!-- Season Stats -->
+    <!-- Stats -->
     <div class="container" style="margin-bottom:var(--sp-12);">
       <div class="season-stats-grid" style="background:var(--surface-low);border-radius:var(--radius-xl);padding:var(--sp-6);border:1px solid rgba(255,255,255,0.04);">
-        <div class="text-center"><p class="stat-label" style="text-align:center;margin-bottom:var(--sp-2);">Total Players</p><p style="font-family:var(--font-headline);font-size:1.75rem;font-weight:900;color:var(--on-surface);">42,801</p></div>
-        <div class="text-center"><p class="stat-label" style="text-align:center;margin-bottom:var(--sp-2);">Season Volume</p><p style="font-family:var(--font-headline);font-size:1.75rem;font-weight:900;color:var(--on-surface);">$1.2B</p></div>
-        <div class="text-center"><p class="stat-label" style="text-align:center;margin-bottom:var(--sp-2);">Markets Resolved</p><p style="font-family:var(--font-headline);font-size:1.75rem;font-weight:900;color:var(--on-surface);">2,840</p></div>
-        <div class="text-center"><p class="stat-label" style="text-align:center;margin-bottom:var(--sp-2);">Season Ends</p><p style="font-family:var(--font-headline);font-size:1.75rem;font-weight:900;color:var(--primary);">87 Days</p></div>
+        <div class="text-center">
+          <p class="stat-label" style="text-align:center;margin-bottom:var(--sp-2);">Total Players</p>
+          <p style="font-family:var(--font-headline);font-size:1.75rem;font-weight:900;color:var(--on-surface);">{{ totalPlayers.toLocaleString() }}</p>
+        </div>
+        <div class="text-center">
+          <p class="stat-label" style="text-align:center;margin-bottom:var(--sp-2);">Total Volume</p>
+          <p style="font-family:var(--font-headline);font-size:1.75rem;font-weight:900;color:var(--on-surface);">{{ totalVolume }} Poly</p>
+        </div>
+        <div class="text-center">
+          <p class="stat-label" style="text-align:center;margin-bottom:var(--sp-2);">Total Trades</p>
+          <p style="font-family:var(--font-headline);font-size:1.75rem;font-weight:900;color:var(--primary);">{{ totalTrades.toLocaleString() }}</p>
+        </div>
       </div>
     </div>
 
+    <!-- Loading / Error -->
+    <div v-if="loading" style="text-align:center;padding:var(--sp-16);color:var(--on-surface-variant);">
+      <span class="material-symbols-outlined" style="font-size:2rem;animation:spin 1s linear infinite;">refresh</span>
+      <p style="margin-top:var(--sp-4);">Loading leaderboard...</p>
+    </div>
+    <div v-else-if="error" style="text-align:center;padding:var(--sp-16);color:var(--error);">{{ error }}</div>
+
     <!-- Leaderboard Table -->
-    <div class="container">
-      <div class="flex gap-4 mb-8">
-        <button class="btn btn-primary btn-sm">All Time</button>
-        <button class="btn btn-secondary btn-sm">This Month</button>
-        <button class="btn btn-secondary btn-sm">This Week</button>
-      </div>
+    <div v-else class="container">
 
       <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
       <div style="min-width:42rem;">
 
-      <div style="display:grid;grid-template-columns:50px minmax(0,1fr) 100px 120px 100px;column-gap:var(--sp-4);padding:var(--sp-2) var(--sp-6);margin-bottom:var(--sp-2);">
+      <!-- Header row -->
+      <div style="display:grid;grid-template-columns:50px minmax(0,1fr) 120px 100px 100px;column-gap:var(--sp-4);padding:var(--sp-2) var(--sp-6);margin-bottom:var(--sp-2);">
         <span class="text-label-sm text-dim uppercase tracking-widest">#</span>
         <span class="text-label-sm text-dim uppercase tracking-widest">Player</span>
-        <span class="text-label-sm text-dim uppercase tracking-widest" style="text-align:center;">Win Rate</span>
         <span class="text-label-sm text-dim uppercase tracking-widest" style="text-align:center;">Total Profit</span>
-        <span class="text-label-sm text-dim uppercase tracking-widest" style="text-align:center;">Positions</span>
+        <span class="text-label-sm text-dim uppercase tracking-widest" style="text-align:center;">Invested</span>
+        <span class="text-label-sm text-dim uppercase tracking-widest" style="text-align:center;">Trades</span>
       </div>
 
       <div style="display:flex;flex-direction:column;gap:var(--sp-3);">
-        <div class="leaderboard-row" style="border:1px solid rgba(255,215,0,0.15);background:rgba(255,215,0,0.04);">
-          <div class="leaderboard-player-sticky" style="background:color-mix(in srgb,var(--surface-low),rgba(255,215,0,0.07));"><span class="leaderboard-rank leaderboard-rank-1">1</span><div class="leaderboard-avatar"><span class="leaderboard-avatar-text">PX</span></div><div class="leaderboard-info"><p class="leaderboard-name">PHANTOM_X</p><p class="leaderboard-handle">ID: PMR-0001 · Politics Specialist</p></div></div>
-          <div class="lb-stat-cell"><p class="leaderboard-stat-value positive">94%</p><p class="leaderboard-stat-label">Win Rate</p></div>
-          <div class="lb-stat-cell"><p class="leaderboard-stat-value positive">+84,200 PMR</p><p class="leaderboard-stat-label">Total Profit</p></div>
-          <div class="lb-stat-cell"><p class="leaderboard-stat-value">148</p><p class="leaderboard-stat-label">Positions</p></div>
+        <div
+          v-for="entry in leaderboard"
+          :key="entry.userId"
+          class="leaderboard-row"
+          :style="rowStyle(entry.rank, entry.userId === currentUserId)"
+        >
+          <div class="leaderboard-player-sticky" :style="stickyBg(entry.rank, entry.userId === currentUserId)">
+            <span :class="['leaderboard-rank', rankClass(entry.rank)]" :style="entry.userId === currentUserId ? 'color:var(--tertiary);font-size:1rem;' : ''">{{ entry.rank }}</span>
+            <div class="leaderboard-avatar" :style="entry.userId === currentUserId ? 'border-color:rgba(208,188,255,0.4);' : ''">
+              <img v-if="entry.avatarUrl" :src="entry.avatarUrl" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" />
+              <span v-else class="leaderboard-avatar-text" :style="entry.userId === currentUserId ? 'color:var(--tertiary);' : ''">{{ initials(entry.username) }}</span>
+            </div>
+            <div class="leaderboard-info">
+              <p class="leaderboard-name" :style="entry.userId === currentUserId ? 'color:var(--tertiary);' : ''">
+                <template v-if="entry.userId === currentUserId">YOU · </template>{{ entry.username }}
+              </p>
+              <p class="leaderboard-handle">Balance: {{ (entry.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} Poly</p>
+            </div>
+          </div>
+          <div class="lb-stat-cell">
+            <p :class="['leaderboard-stat-value', entry.profit >= 0 ? 'positive' : 'negative']">{{ formatProfit(entry.profit) }} Poly</p>
+            <p class="leaderboard-stat-label">Profit</p>
+          </div>
+          <div class="lb-stat-cell">
+            <p class="leaderboard-stat-value">{{ (entry.totalInvested || 0).toLocaleString('en-US', { maximumFractionDigits: 0 }) }}</p>
+            <p class="leaderboard-stat-label">Invested</p>
+          </div>
+          <div class="lb-stat-cell">
+            <p class="leaderboard-stat-value">{{ entry.tradeCount }}</p>
+            <p class="leaderboard-stat-label">Trades</p>
+          </div>
         </div>
-        <div class="leaderboard-row" style="border:1px solid rgba(192,192,192,0.1);background:rgba(192,192,192,0.03);">
-          <div class="leaderboard-player-sticky"><span class="leaderboard-rank leaderboard-rank-2">2</span><div class="leaderboard-avatar"><span class="leaderboard-avatar-text">NV</span></div><div class="leaderboard-info"><p class="leaderboard-name">NOVA_VANTAGE</p><p class="leaderboard-handle">ID: PMR-0042 · Crypto Oracle</p></div></div>
-          <div class="lb-stat-cell"><p class="leaderboard-stat-value positive">89%</p><p class="leaderboard-stat-label">Win Rate</p></div>
-          <div class="lb-stat-cell"><p class="leaderboard-stat-value positive">+61,800 PMR</p><p class="leaderboard-stat-label">Total Profit</p></div>
-          <div class="lb-stat-cell"><p class="leaderboard-stat-value">204</p><p class="leaderboard-stat-label">Positions</p></div>
-        </div>
-        <div class="leaderboard-row" style="border:1px solid rgba(205,127,50,0.1);">
-          <div class="leaderboard-player-sticky"><span class="leaderboard-rank leaderboard-rank-3">3</span><div class="leaderboard-avatar"><span class="leaderboard-avatar-text">AR</span></div><div class="leaderboard-info"><p class="leaderboard-name">ARCHITECT_01</p><p class="leaderboard-handle">ID: PMR-0108 · Tech Analyst</p></div></div>
-          <div class="lb-stat-cell"><p class="leaderboard-stat-value positive">81%</p><p class="leaderboard-stat-label">Win Rate</p></div>
-          <div class="lb-stat-cell"><p class="leaderboard-stat-value positive">+44,500 PMR</p><p class="leaderboard-stat-label">Total Profit</p></div>
-          <div class="lb-stat-cell"><p class="leaderboard-stat-value">316</p><p class="leaderboard-stat-label">Positions</p></div>
-        </div>
-        <div class="leaderboard-row">
-          <div class="leaderboard-player-sticky"><span class="leaderboard-rank leaderboard-rank-other">4</span><div class="leaderboard-avatar"><span class="leaderboard-avatar-text">QX</span></div><div class="leaderboard-info"><p class="leaderboard-name">QUANT_X99</p><p class="leaderboard-handle">ID: PMR-0201 · Multi-Market</p></div></div>
-          <div class="lb-stat-cell"><p class="leaderboard-stat-value">78%</p><p class="leaderboard-stat-label">Win Rate</p></div>
-          <div class="lb-stat-cell"><p class="leaderboard-stat-value positive">+38,200 PMR</p><p class="leaderboard-stat-label">Total Profit</p></div>
-          <div class="lb-stat-cell"><p class="leaderboard-stat-value">287</p><p class="leaderboard-stat-label">Positions</p></div>
-        </div>
-        <div class="leaderboard-row">
-          <div class="leaderboard-player-sticky"><span class="leaderboard-rank leaderboard-rank-other">5</span><div class="leaderboard-avatar"><span class="leaderboard-avatar-text">SE</span></div><div class="leaderboard-info"><p class="leaderboard-name">SIGNAL_ECHO</p><p class="leaderboard-handle">ID: PMR-0399 · Sports Expert</p></div></div>
-          <div class="lb-stat-cell"><p class="leaderboard-stat-value">75%</p><p class="leaderboard-stat-label">Win Rate</p></div>
-          <div class="lb-stat-cell"><p class="leaderboard-stat-value positive">+29,100 PMR</p><p class="leaderboard-stat-label">Total Profit</p></div>
-          <div class="lb-stat-cell"><p class="leaderboard-stat-value">412</p><p class="leaderboard-stat-label">Positions</p></div>
-        </div>
-        <div class="leaderboard-row">
-          <div class="leaderboard-player-sticky"><span class="leaderboard-rank leaderboard-rank-other">6</span><div class="leaderboard-avatar"><span class="leaderboard-avatar-text">VG</span></div><div class="leaderboard-info"><p class="leaderboard-name">VANGUARD_11</p><p class="leaderboard-handle">ID: PMR-0502 · Science Focus</p></div></div>
-          <div class="lb-stat-cell"><p class="leaderboard-stat-value">72%</p><p class="leaderboard-stat-label">Win Rate</p></div>
-          <div class="lb-stat-cell"><p class="leaderboard-stat-value positive">+22,600 PMR</p><p class="leaderboard-stat-label">Total Profit</p></div>
-          <div class="lb-stat-cell"><p class="leaderboard-stat-value">195</p><p class="leaderboard-stat-label">Positions</p></div>
-        </div>
-        <div class="leaderboard-row">
-          <div class="leaderboard-player-sticky"><span class="leaderboard-rank leaderboard-rank-other">7</span><div class="leaderboard-avatar"><span class="leaderboard-avatar-text">OR</span></div><div class="leaderboard-info"><p class="leaderboard-name">ORACLE_NINE</p><p class="leaderboard-handle">ID: PMR-0618 · Crypto / Finance</p></div></div>
-          <div class="lb-stat-cell"><p class="leaderboard-stat-value">70%</p><p class="leaderboard-stat-label">Win Rate</p></div>
-          <div class="lb-stat-cell"><p class="leaderboard-stat-value positive">+18,900 PMR</p><p class="leaderboard-stat-label">Total Profit</p></div>
-          <div class="lb-stat-cell"><p class="leaderboard-stat-value">344</p><p class="leaderboard-stat-label">Positions</p></div>
-        </div>
-        <!-- Current User -->
-        <div class="leaderboard-row" style="border:1px solid rgba(208,188,255,0.2);background:rgba(160,120,255,0.06);">
-          <div class="leaderboard-player-sticky" style="background:color-mix(in srgb,var(--surface-low),rgba(160,120,255,0.1));"><span class="leaderboard-rank" style="color:var(--tertiary);font-size:1rem;">142</span><div class="leaderboard-avatar" style="border-color:rgba(208,188,255,0.4);"><span class="leaderboard-avatar-text" style="color:var(--tertiary);">ME</span></div><div class="leaderboard-info"><p class="leaderboard-name" style="color:var(--tertiary);">YOU · ARCHITECT_01</p><p class="leaderboard-handle">ID: PMR-4201 · Your current rank</p></div></div>
-          <div class="lb-stat-cell"><p class="leaderboard-stat-value" style="color:var(--tertiary);">68%</p><p class="leaderboard-stat-label">Win Rate</p></div>
-          <div class="lb-stat-cell"><p class="leaderboard-stat-value positive">+4,482 PMR</p><p class="leaderboard-stat-label">Total Profit</p></div>
-          <div class="lb-stat-cell"><p class="leaderboard-stat-value">8</p><p class="leaderboard-stat-label">Positions</p></div>
-        </div>
+
+        <!-- Current user highlight if not in top list (scrolled past) -->
+        <template v-if="myEntry && myEntry.rank > leaderboard.length">
+          <div class="leaderboard-row" style="border:1px solid rgba(208,188,255,0.2);background:rgba(160,120,255,0.06);">
+            <div class="leaderboard-player-sticky" style="background:color-mix(in srgb,var(--surface-low),rgba(160,120,255,0.1));">
+              <span class="leaderboard-rank" style="color:var(--tertiary);font-size:1rem;">{{ myEntry.rank }}</span>
+              <div class="leaderboard-avatar" style="border-color:rgba(208,188,255,0.4);"><span class="leaderboard-avatar-text" style="color:var(--tertiary);">{{ initials(myEntry.username) }}</span></div>
+              <div class="leaderboard-info">
+                <p class="leaderboard-name" style="color:var(--tertiary);">YOU · {{ myEntry.username }}</p>
+                <p class="leaderboard-handle">Balance: {{ (myEntry.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} Poly</p>
+              </div>
+            </div>
+            <div class="lb-stat-cell"><p :class="['leaderboard-stat-value', myEntry.profit >= 0 ? 'positive' : 'negative']">{{ formatProfit(myEntry.profit) }} Poly</p><p class="leaderboard-stat-label">Profit</p></div>
+            <div class="lb-stat-cell"><p class="leaderboard-stat-value">{{ (myEntry.totalInvested || 0).toLocaleString('en-US', { maximumFractionDigits: 0 }) }}</p><p class="leaderboard-stat-label">Invested</p></div>
+            <div class="lb-stat-cell"><p class="leaderboard-stat-value">{{ myEntry.tradeCount }}</p><p class="leaderboard-stat-label">Trades</p></div>
+          </div>
+        </template>
       </div>
 
       </div>
       </div>
 
-      <div style="display:flex;justify-content:center;margin-top:var(--sp-10);">
-        <button class="btn btn-secondary">Load More Operators</button>
-      </div>
+      <p v-if="leaderboard.length === 0 && !loading" style="text-align:center;color:var(--on-surface-variant);padding:var(--sp-12);">
+        No traders yet. Be the first to place a trade!
+      </p>
     </div>
   </main>
-
-  <!-- FOOTER -->
-  <footer class="footer footer-app">
-    <div class="footer-bottom" style="max-width:80rem;margin-inline:auto;border-top:none;padding-top:0;">
-      <div class="flex gap-8">
-        <a href="#" class="footer-link" style="margin-bottom:0;">Whitepaper</a>
-        <a href="#" class="footer-link" style="margin-bottom:0;">Governance</a>
-        <a href="#" class="footer-link" style="margin-bottom:0;">Terms</a>
-        <a href="#" class="footer-link" style="margin-bottom:0;">Security</a>
-      </div>
-      <span class="footer-copyright">&copy; 2024 POLYMIRROR PROTOCOL. ALL RIGHTS RESERVED.</span>
-    </div>
-  </footer>
 
   <!-- MOBILE NAV -->
   <nav class="mobile-nav">
@@ -189,4 +192,8 @@
   </nav>
 </template>
 
-<style scoped></style>
+<style scoped>
+.negative {
+  color: var(--error, #f44336);
+}
+</style>

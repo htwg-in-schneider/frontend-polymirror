@@ -1,39 +1,66 @@
 <script setup>
+import { ref, onMounted } from 'vue';
+import { useAuth0 } from '@auth0/auth0-vue';
+import axios from 'axios';
+import { API_BASE } from '@/config.js';
+
+const { isAuthenticated } = useAuth0();
+const contactName = ref('');
+const contactEmail = ref('');
+const contactSubject = ref('');
+const contactMessage = ref('');
+
+const politicsMarket = ref(null);
+const sportsMarket = ref(null);
+const cryptoMarkets = ref([]);
+const marketCount = ref(0);
+
+function formatVolume(vol) {
+  if (!vol) return '$0';
+  if (vol >= 1_000_000) return '$' + (vol / 1_000_000).toFixed(1) + 'M';
+  if (vol >= 1_000) return '$' + (vol / 1_000).toFixed(0) + 'K';
+  return '$' + vol.toFixed(0);
+}
+
+onMounted(async () => {
+  try {
+    const [pol, spo, cry, all] = await Promise.all([
+      axios.get(`${API_BASE}/markets`, { params: { page: 0, size: 1, category: 'Politics' } }),
+      axios.get(`${API_BASE}/markets`, { params: { page: 0, size: 1, category: 'Sports' } }),
+      axios.get(`${API_BASE}/markets`, { params: { page: 0, size: 2, category: 'Crypto' } }),
+      axios.get(`${API_BASE}/markets`, { params: { page: 0, size: 1 } }),
+    ]);
+    if (pol.data.content?.length) politicsMarket.value = pol.data.content[0];
+    if (spo.data.content?.length) sportsMarket.value = spo.data.content[0];
+    if (cry.data.content?.length) cryptoMarkets.value = cry.data.content;
+    if (all.data.totalElements) marketCount.value = all.data.totalElements;
+  } catch (e) {
+    console.error('Failed to load featured markets', e);
+  }
+});
+
+const contactError = ref('');
+
+function sendContact() {
+  contactError.value = '';
+  if (!contactName.value.trim()) { contactError.value = 'Please enter your name'; return; }
+  if (contactName.value.trim().length > 100) { contactError.value = 'Name is too long (max 100 characters)'; return; }
+  if (!contactEmail.value.trim()) { contactError.value = 'Please enter your email'; return; }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(contactEmail.value.trim())) { contactError.value = 'Please enter a valid email address'; return; }
+  if (!contactMessage.value.trim()) { contactError.value = 'Please enter a message'; return; }
+  if (contactMessage.value.length > 2000) { contactError.value = 'Message is too long (max 2000 characters)'; return; }
+
+  const to = 'kontakt@polymirror.de';
+  const subject = encodeURIComponent(contactSubject.value || 'Contact Request');
+  const body = encodeURIComponent(
+    `Name: ${contactName.value}\nE-Mail: ${contactEmail.value}\n\n${contactMessage.value}`
+  );
+  window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+}
 </script>
 
 <template>
-  <!-- TOP NAVIGATION -->
-  <nav class="top-nav">
-    <div class="flex items-center gap-8">
-      <router-link to="/" class="nav-brand">
-        <span class="material-symbols-outlined text-primary" style="font-size:1.75rem;">hub</span>
-        PolyMirror
-      </router-link>
-      <nav class="nav-links">
-        <router-link to="/markets" class="nav-link">Markets</router-link>
-        <router-link to="/dashboard" class="nav-link">Dashboard</router-link>
-        <router-link to="/leaderboard" class="nav-link">Leaderboard</router-link>
-        <router-link to="/faq" class="nav-link">FAQ</router-link>
-      </nav>
-    </div>
-    <div class="nav-actions">
-      <div class="search-wrap hide-on-mobile">
-        <span class="material-symbols-outlined">search</span>
-        <input class="search-input" type="text" placeholder="Search markets...">
-      </div>
-      <div class="nav-balance">
-        <span class="nav-balance-label">Available</span>
-        <span class="nav-balance-value">0.00 Poly</span>
-      </div>
-      <router-link to="/profile" class="btn btn-ghost btn-sm" style="display:flex;align-items:center;gap:var(--sp-2);">
-        <span class="material-symbols-outlined" style="font-size:1.1rem;">account_circle</span>
-        <span class="hide-on-mobile">Profile</span>
-      </router-link>
-      <router-link to="/register" class="btn btn-ghost btn-sm">Sign In</router-link>
-      <router-link to="/login" class="btn btn-primary">Log In</router-link>
-    </div>
-  </nav>
-
   <main>
     <!-- HERO -->
     <section class="hero">
@@ -48,8 +75,8 @@
             Master the odds in a luminous digital arena built for precision.
           </p>
           <div class="hero-actions">
-            <router-link to="/register" class="btn btn-primary btn-lg">Get Started</router-link>
-            <router-link to="/markets" class="btn btn-secondary btn-lg">View Markets</router-link>
+            <router-link v-if="!isAuthenticated" to="/register" class="btn btn-primary btn-lg">Get Started</router-link>
+            <router-link to="/markets" class="btn btn-primary btn-lg">View Markets</router-link>
           </div>
         </div>
         <div class="hero-visual">
@@ -60,7 +87,7 @@
           <div class="hero-float-chip hero-float-chip-tr">
             <div class="glass-chip" style="border-radius:var(--radius-2xl);padding:var(--sp-4) var(--sp-5);">
               <div class="hero-pulse-dot"></div>
-              <span class="text-label-sm uppercase" style="letter-spacing:.15em;font-weight:700;">Live: 4,209 Markets</span>
+              <span class="text-label-sm uppercase" style="letter-spacing:.15em;font-weight:700;">Live: {{ marketCount.toLocaleString() }} Markets</span>
             </div>
           </div>
         </div>
@@ -129,22 +156,22 @@
               <h3 class="text-headline-sm uppercase" style="letter-spacing:.1em;">Politics</h3>
               <router-link to="/markets" class="text-label-sm text-primary" style="font-weight:700;">View All</router-link>
             </div>
-            <div class="card" style="padding:var(--sp-6);cursor:pointer;">
-              <h5 class="text-title-lg" style="line-height:1.4;margin-bottom:var(--sp-6);">Who will win the 2024 Presidential Election?</h5>
+            <router-link v-if="politicsMarket" :to="'/market/' + politicsMarket.id" class="card" style="padding:var(--sp-6);cursor:pointer;text-decoration:none;color:inherit;">
+              <div style="display:flex;align-items:flex-start;gap:var(--sp-3);margin-bottom:var(--sp-6);">
+                <img v-if="politicsMarket.imageUrl" :src="politicsMarket.imageUrl" alt="" style="width:2.5rem;height:2.5rem;border-radius:var(--radius-sm, 6px);object-fit:cover;flex-shrink:0;">
+                <h5 class="text-title-lg" style="line-height:1.4;">{{ politicsMarket.title }}</h5>
+              </div>
               <div class="odds-bar-wrapper">
                 <div class="odds-labels">
-                  <span class="odds-label-yes">Democrat</span>
-                  <span class="odds-label-no">Republican</span>
+                  <span class="odds-label-yes">YES {{ politicsMarket.odds }}%</span>
+                  <span class="odds-label-no">NO {{ (100 - politicsMarket.odds).toFixed(1) }}%</span>
                 </div>
                 <div class="odds-bar odds-bar-lg">
-                  <div class="odds-bar-fill" style="width:52%"></div>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-label-md text-primary" style="font-weight:700;">52%</span>
-                  <span class="text-label-md text-muted" style="font-weight:700;">48%</span>
+                  <div class="odds-bar-fill" :style="{ width: politicsMarket.odds + '%' }"></div>
                 </div>
               </div>
-            </div>
+            </router-link>
+            <div v-else class="card" style="padding:var(--sp-6);color:var(--on-surface-variant);font-size:.85rem;">No politics markets available</div>
           </div>
           <!-- SPORTS -->
           <div style="display:flex;flex-direction:column;gap:var(--sp-4);">
@@ -152,14 +179,18 @@
               <h3 class="text-headline-sm uppercase" style="letter-spacing:.1em;">Sports</h3>
               <router-link to="/markets" class="text-label-sm text-primary" style="font-weight:700;">View All</router-link>
             </div>
-            <div class="card-elevated" style="padding:var(--sp-6);cursor:pointer;overflow:hidden;position:relative;">
+            <router-link v-if="sportsMarket" :to="'/market/' + sportsMarket.id" class="card-elevated" style="padding:var(--sp-6);cursor:pointer;overflow:hidden;position:relative;text-decoration:none;color:inherit;">
               <span class="badge badge-primary" style="position:relative;">Live</span>
-              <h5 class="text-title-lg" style="line-height:1.4;margin:var(--sp-4) 0 var(--sp-6);position:relative;">Next Superbowl Champion?</h5>
-              <div class="glass" style="display:flex;justify-content:space-between;align-items:center;padding:var(--sp-3) var(--sp-4);border-radius:var(--radius-lg);border:1px solid rgba(173,198,255,0.15);position:relative;">
-                <span class="text-title-md" style="font-weight:700;">KC Chiefs</span>
-                <span class="text-label-md text-primary" style="font-weight:900;">22% Odds</span>
+              <div style="display:flex;align-items:flex-start;gap:var(--sp-3);margin:var(--sp-4) 0 var(--sp-6);position:relative;">
+                <img v-if="sportsMarket.imageUrl" :src="sportsMarket.imageUrl" alt="" style="width:2.5rem;height:2.5rem;border-radius:var(--radius-sm, 6px);object-fit:cover;flex-shrink:0;">
+                <h5 class="text-title-lg" style="line-height:1.4;">{{ sportsMarket.title }}</h5>
               </div>
-            </div>
+              <div class="glass" style="display:flex;justify-content:space-between;align-items:center;padding:var(--sp-3) var(--sp-4);border-radius:var(--radius-lg);border:1px solid rgba(173,198,255,0.15);position:relative;">
+                <span class="text-title-md" style="font-weight:700;">{{ formatVolume(sportsMarket.volume) }} Vol</span>
+                <span class="text-label-md text-primary" style="font-weight:900;">{{ sportsMarket.odds }}% Odds</span>
+              </div>
+            </router-link>
+            <div v-else class="card-elevated" style="padding:var(--sp-6);color:var(--on-surface-variant);font-size:.85rem;">No sports markets available</div>
           </div>
           <!-- CRYPTO -->
           <div style="display:flex;flex-direction:column;gap:var(--sp-4);">
@@ -167,20 +198,19 @@
               <h3 class="text-headline-sm uppercase" style="letter-spacing:.1em;">Crypto</h3>
               <router-link to="/markets" class="text-label-sm text-primary" style="font-weight:700;">View All</router-link>
             </div>
-            <div class="market-row" style="cursor:pointer;">
-              <div>
-                <p class="text-title-md">BTC reach $100k before May?</p>
-                <p class="market-row-meta">Vol: 8.2M Poly</p>
-              </div>
-              <span class="text-headline-sm text-primary" style="font-weight:900;">62%</span>
-            </div>
-            <div class="market-row" style="cursor:pointer;">
-              <div>
-                <p class="text-title-md">ETH above $4,500 by July?</p>
-                <p class="market-row-meta">Vol: 2.1M Poly</p>
-              </div>
-              <span class="text-headline-sm text-primary" style="font-weight:900;">34%</span>
-            </div>
+            <template v-if="cryptoMarkets.length">
+              <router-link v-for="m in cryptoMarkets" :key="m.id" :to="'/market/' + m.id" class="market-row" style="cursor:pointer;text-decoration:none;color:inherit;">
+                <div style="display:flex;align-items:center;gap:var(--sp-3);">
+                  <img v-if="m.imageUrl" :src="m.imageUrl" alt="" style="width:2rem;height:2rem;border-radius:var(--radius-sm, 6px);object-fit:cover;flex-shrink:0;">
+                  <div>
+                    <p class="text-title-md">{{ m.title }}</p>
+                    <p class="market-row-meta">Vol: {{ formatVolume(m.volume) }}</p>
+                  </div>
+                </div>
+                <span class="text-headline-sm text-primary" style="font-weight:900;">{{ m.odds }}%</span>
+              </router-link>
+            </template>
+            <div v-else class="market-row" style="color:var(--on-surface-variant);font-size:.85rem;">No crypto markets available</div>
           </div>
         </div>
       </div>
@@ -201,45 +231,99 @@
         </div>
       </div>
     </section>
+
+    <!-- CONTACT FORM -->
+    <section class="section" style="background:var(--surface-low);">
+      <div class="container">
+        <div style="max-width:40rem;margin-inline:auto;">
+          <div style="text-align:center;margin-bottom:var(--sp-12);">
+            <span class="section-eyebrow">Get in Touch</span>
+            <h2 class="section-title">Contact Us</h2>
+            <p style="color:var(--on-surface-variant);font-size:.9375rem;line-height:1.75;max-width:28rem;margin-inline:auto;">
+              Questions, feedback, or suggestions? Send us a message.
+            </p>
+          </div>
+          <div v-if="contactError" style="color:#ff6b6b;font-size:.85rem;padding:var(--sp-3) var(--sp-4);border:1px solid rgba(255,107,107,0.3);border-radius:var(--radius-md);margin-bottom:var(--sp-4);">
+            {{ contactError }}
+          </div>
+          <form class="contact-form" @submit.prevent="sendContact">
+            <div class="contact-row">
+              <div class="contact-field">
+                <label class="contact-label" for="c-name">Name</label>
+                <input id="c-name" v-model="contactName" class="contact-input" type="text" placeholder="Max Mustermann" required>
+              </div>
+              <div class="contact-field">
+                <label class="contact-label" for="c-email">E-Mail</label>
+                <input id="c-email" v-model="contactEmail" class="contact-input" type="email" placeholder="max@example.com" required>
+              </div>
+            </div>
+            <div class="contact-field">
+              <label class="contact-label" for="c-subject">Subject</label>
+              <input id="c-subject" v-model="contactSubject" class="contact-input" type="text" placeholder="What is it about?">
+            </div>
+            <div class="contact-field">
+              <label class="contact-label" for="c-msg">Message</label>
+              <textarea id="c-msg" v-model="contactMessage" class="contact-input contact-textarea" placeholder="Your message..." rows="5" required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;padding:var(--sp-4);font-size:.9rem;border-radius:var(--radius-lg);">
+              <span class="material-symbols-outlined" style="font-size:1.1rem;">send</span>
+              Send Message
+            </button>
+          </form>
+        </div>
+      </div>
+    </section>
   </main>
 
-  <!-- FOOTER -->
-  <footer class="footer" style="margin-top:var(--sp-24);">
-    <div class="footer-grid">
-      <div class="footer-brand">
-        <div class="flex items-center gap-2" style="margin-bottom:var(--sp-4);">
-          <span class="material-symbols-outlined text-primary">hub</span>
-          <span style="font-family:var(--font-headline);font-size:1.125rem;font-weight:700;color:var(--on-surface);">PolyMirror</span>
-        </div>
-        <p>The precision prediction protocol for the next generation of analysts. Trade narratives, master the data, and own the future.</p>
-      </div>
-      <div>
-        <span class="footer-col-title">Protocol</span>
-        <a href="#" class="footer-link">Documentation</a>
-        <a href="#" class="footer-link">Terms of Service</a>
-        <a href="#" class="footer-link">Privacy Policy</a>
-      </div>
-      <div>
-        <span class="footer-col-title">Connect</span>
-        <a href="#" class="footer-link">Discord</a>
-        <a href="#" class="footer-link">Twitter / X</a>
-        <router-link to="/faq" class="footer-link">FAQ</router-link>
-      </div>
-    </div>
-    <div class="footer-bottom">
-      <span class="footer-copyright">&copy; 2024 PolyMirror. Powered by HTWG.</span>
-      <div class="flex gap-8 items-center">
-        <div class="footer-status">
-          <div class="hero-pulse-dot"></div>
-          Mainnet Live
-        </div>
-        <div class="footer-status">
-          <span class="material-symbols-outlined" style="font-size:.875rem;">terminal</span>
-          v1.2.0-Alpha
-        </div>
-      </div>
-    </div>
-  </footer>
 </template>
 
-<style scoped></style>
+<style scoped>
+.contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+.contact-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-5);
+}
+@media (max-width: 600px) {
+  .contact-row { grid-template-columns: 1fr; }
+}
+.contact-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.contact-label {
+  font-family: var(--font-label);
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--on-surface-variant);
+}
+.contact-input {
+  background: var(--surface-base);
+  border: 1px solid rgba(173, 198, 255, 0.12);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-3) var(--sp-4);
+  font-size: .875rem;
+  color: var(--on-surface);
+  font-family: inherit;
+  transition: border-color var(--t-base);
+  outline: none;
+  resize: vertical;
+}
+.contact-input::placeholder {
+  color: var(--on-surface-variant);
+  opacity: 0.5;
+}
+.contact-input:focus {
+  border-color: var(--primary);
+}
+.contact-textarea {
+  min-height: 8rem;
+}
+</style>

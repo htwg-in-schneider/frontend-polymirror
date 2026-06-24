@@ -24,49 +24,6 @@ const faqs = [
 <template>
   <div class="bg-glow-blob bg-glow-blob-tr"></div>
 
-  <!-- TOP NAVIGATION -->
-  <nav class="top-nav">
-    <div class="flex items-center gap-8">
-      <router-link to="/" class="nav-brand">
-        <span class="material-symbols-outlined text-primary" style="font-size:1.75rem;">hub</span>
-        PolyMirror
-      </router-link>
-      <nav class="nav-links">
-        <router-link to="/markets" class="nav-link">Markets</router-link>
-        <router-link to="/dashboard" class="nav-link">Dashboard</router-link>
-        <router-link to="/leaderboard" class="nav-link">Leaderboard</router-link>
-        <router-link to="/faq" class="nav-link active">FAQ</router-link>
-      </nav>
-    </div>
-    <div class="nav-actions">
-      <div class="search-wrap hide-on-mobile">
-        <span class="material-symbols-outlined">search</span>
-        <input class="search-input" type="text" placeholder="Search markets...">
-      </div>
-      <div class="nav-balance">
-        <span class="nav-balance-label">Available</span>
-        <span class="nav-balance-value">0.00 Poly</span>
-      </div>
-      <router-link to="/profile" class="btn btn-ghost btn-sm" style="display:flex;align-items:center;gap:var(--sp-2);"><span class="material-symbols-outlined" style="font-size:1.1rem;">account_circle</span><span class="hide-on-mobile">Profile</span></router-link>
-      <router-link to="/register" class="btn btn-ghost btn-sm">Sign In</router-link>
-      <router-link to="/login" class="btn btn-primary">Log In</router-link>
-      <button class="nav-search-icon" aria-label="Search"><span class="material-symbols-outlined">search</span></button>
-      <button class="hamburger-btn" aria-label="Menu"><span class="material-symbols-outlined">menu</span></button>
-    </div>
-  </nav>
-
-  <div class="mobile-menu">
-    <router-link to="/markets" class="mobile-menu-link">Markets</router-link>
-    <router-link to="/dashboard" class="mobile-menu-link">Dashboard</router-link>
-    <router-link to="/leaderboard" class="mobile-menu-link">Leaderboard</router-link>
-    <router-link to="/faq" class="mobile-menu-link active">FAQ</router-link>
-    <div class="mobile-menu-divider"></div>
-    <div class="mobile-menu-actions">
-      <router-link to="/register" class="btn btn-secondary">Sign In</router-link>
-      <router-link to="/login" class="btn btn-primary">Log In</router-link>
-    </div>
-  </div>
-
   <main style="padding-top:var(--nav-height);padding-bottom:var(--sp-24);">
 
     <!-- Page Header -->
@@ -103,37 +60,6 @@ const faqs = [
     </div>
   </main>
 
-  <!-- FOOTER -->
-  <footer class="footer">
-    <div class="footer-grid">
-      <div class="footer-brand">
-        <div class="flex items-center gap-2" style="margin-bottom:var(--sp-4);">
-          <span class="material-symbols-outlined text-primary">hub</span>
-          <span style="font-family:var(--font-headline);font-size:1.125rem;font-weight:700;color:var(--on-surface);">PolyMirror</span>
-        </div>
-        <p>The precision prediction protocol for the next generation of analysts. Trade narratives, master the data, and own the future.</p>
-      </div>
-      <div>
-        <span class="footer-col-title">Protocol</span>
-        <a href="#" class="footer-link">Documentation</a>
-        <a href="#" class="footer-link">Terms of Service</a>
-        <a href="#" class="footer-link">Privacy Policy</a>
-      </div>
-      <div>
-        <span class="footer-col-title">Connect</span>
-        <a href="#" class="footer-link">Discord</a>
-        <a href="#" class="footer-link">Twitter / X</a>
-        <router-link to="/faq" class="footer-link">FAQ</router-link>
-      </div>
-    </div>
-    <div class="footer-bottom">
-      <span class="footer-copyright">&copy; 2024 PolyMirror. Powered by HTWG.</span>
-      <div class="flex gap-8 items-center">
-        <div class="footer-status"><div class="hero-pulse-dot"></div>Mainnet Live</div>
-        <div class="footer-status"><span class="material-symbols-outlined" style="font-size:.875rem;">terminal</span>v1.2.0-Alpha</div>
-      </div>
-    </div>
-  </footer>
 </template>
 
 <style scoped>
