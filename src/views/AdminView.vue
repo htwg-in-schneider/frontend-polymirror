@@ -611,7 +611,6 @@ onMounted(() => {
                 <th>Email</th>
                 <th>Role</th>
                 <th>Status</th>
-                <th>Balance</th>
                 <th>Created</th>
                 <th>Actions</th>
               </tr>
@@ -629,7 +628,6 @@ onMounted(() => {
                     </select>
                   </td>
                   <td><span :class="u.banned ? 'admin-status-banned' : ''">{{ u.banned ? 'BANNED' : '' }}</span></td>
-                  <td style="font-family:var(--font-headline);">{{ u.balance?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</td>
                   <td style="font-size:.75rem;color:var(--on-surface-variant);">{{ formatDate(u.createdAt) }}</td>
                   <td>
                     <div style="display:flex;gap:var(--sp-2);">
@@ -651,7 +649,6 @@ onMounted(() => {
                     <span v-if="u.banned" class="admin-status-banned" :title="u.banReason || ''">BANNED</span>
                     <span v-else class="admin-status-active">Active</span>
                   </td>
-                  <td style="font-family:var(--font-headline);font-weight:700;">{{ u.balance?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</td>
                   <td style="font-size:.75rem;color:var(--on-surface-variant);">{{ formatDate(u.createdAt) }}</td>
                   <td>
                     <div style="display:flex;gap:var(--sp-2);">

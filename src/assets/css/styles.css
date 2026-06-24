@@ -2212,11 +2212,18 @@ h1, h2, h3, h4, h5, h6 {
   .category-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
+@media (max-width: 37.5rem) { /* < 600px — phones */
+  .nav-brand { font-size: 1rem; }
+  .nav-balance { margin-left: auto; }
+  .nav-balance-label { font-size: 0.45rem; }
+  .nav-balance-value { font-size: 0.75rem; }
+}
+
 @media (max-width: 24.9375rem) { /* < 399px — very small phones (S8, SE) */
   .top-nav { padding-inline: var(--sp-3); }
   .nav-brand { font-size: 0.85rem; gap: var(--sp-2); }
-  .nav-balance-label { font-size: 0.45rem; }
-  .nav-balance-value { font-size: 0.7rem; }
+  .nav-balance-label { font-size: 0.4rem; }
+  .nav-balance-value { font-size: 0.65rem; }
 }
 
 @media (max-width: 63.9rem) { /* < lg */
