@@ -84,7 +84,7 @@ function removeAvatar() {
 async function confirmDelete() {
   try {
     await userStore.deleteAccount(getAccessTokenSilently);
-    logout({ logoutParams: { returnTo: window.location.origin } });
+    logout({ logoutParams: { returnTo: window.location.origin + import.meta.env.BASE_URL } });
   } catch (e) {
     editError.value = e;
     showDeleteConfirm.value = false;

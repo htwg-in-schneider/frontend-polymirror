@@ -38,7 +38,7 @@ function handleSignup() {
 
 function handleLogout() {
   mobileOpen.value = false;
-  logout({ logoutParams: { returnTo: window.location.origin } });
+  logout({ logoutParams: { returnTo: window.location.origin + import.meta.env.BASE_URL } });
 }
 </script>
 

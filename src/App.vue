@@ -24,7 +24,7 @@ const appealSent = ref(false);
 const bannedUserId = ref(null);
 
 function doLogout() {
-  logout({ logoutParams: { returnTo: window.location.origin } });
+  logout({ logoutParams: { returnTo: window.location.origin + import.meta.env.BASE_URL } });
 }
 
 async function submitAppeal() {
