@@ -17,7 +17,7 @@ createApp(App)
         cacheLocation: 'localstorage',
         useRefreshTokens: true,
         authorizationParams: {
-            redirect_uri: window.location.origin,
+            redirect_uri: window.location.origin + import.meta.env.BASE_URL,
             audience: import.meta.env.VITE_AUTH0_AUDIENCE,
         },
     }))
