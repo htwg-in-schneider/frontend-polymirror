@@ -13,7 +13,7 @@ export const useUserStore = defineStore('user', () => {
   const isLoggedIn = computed(() => !!currentUser.value);
   const isAdmin = computed(() => currentUser.value?.role === 'ADMIN');
 
-  // Load user profile from backend using Auth0 token
+  // Benutzerprofil vom Backend laden mittels Auth0-Token
   async function loadProfile(getAccessTokenSilently) {
     loading.value = true;
     error.value = null;
@@ -37,7 +37,7 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  // Update username
+  // Profil aktualisieren
   async function updateProfile(updates, getAccessTokenSilently) {
     loading.value = true;
     error.value = null;
@@ -56,7 +56,7 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  // Delete own account
+  // Eigenes Konto löschen
   async function deleteAccount(getAccessTokenSilently) {
     loading.value = true;
     error.value = null;

@@ -15,6 +15,7 @@ const sportsMarket = ref(null);
 const cryptoMarkets = ref([]);
 const marketCount = ref(0);
 
+// Formatiert große Zahlen in K (Tausend), M (Millionen), B (Milliarden)
 function formatVolume(vol) {
   if (!vol) return '$0';
   if (vol >= 1_000_000) return '$' + (vol / 1_000_000).toFixed(1) + 'M';
@@ -94,7 +95,7 @@ function sendContact() {
       </div>
     </section>
 
-    <!-- VALUE PROPS -->
+    <!-- WERTVERSPRECHEN -->
     <section class="section" style="background:var(--surface-low);">
       <div class="container">
         <div class="section-header-row">
@@ -139,7 +140,7 @@ function sendContact() {
       </div>
     </section>
 
-    <!-- FEATURED MARKETS -->
+    <!-- AUSGEWÄHLTE MÄRKTE -->
     <section class="section">
       <div class="container">
         <div class="section-header-row" style="margin-bottom:var(--sp-10);">
@@ -150,7 +151,7 @@ function sendContact() {
           <router-link to="/markets" class="btn btn-secondary btn-sm">All Markets</router-link>
         </div>
         <div class="category-grid">
-          <!-- POLITICS -->
+          <!-- POLITIK -->
           <div style="display:flex;flex-direction:column;gap:var(--sp-4);">
             <div class="flex items-center justify-between" style="padding-bottom:var(--sp-4);border-bottom:1px solid rgba(173,198,255,0.08);">
               <h3 class="text-headline-sm uppercase" style="letter-spacing:.1em;">Politics</h3>
@@ -173,7 +174,7 @@ function sendContact() {
             </router-link>
             <div v-else class="card" style="padding:var(--sp-6);color:var(--on-surface-variant);font-size:.85rem;">No politics markets available</div>
           </div>
-          <!-- SPORTS -->
+          <!-- SPORT -->
           <div style="display:flex;flex-direction:column;gap:var(--sp-4);">
             <div class="flex items-center justify-between" style="padding-bottom:var(--sp-4);border-bottom:1px solid rgba(173,198,255,0.08);">
               <h3 class="text-headline-sm uppercase" style="letter-spacing:.1em;">Sports</h3>
@@ -216,7 +217,7 @@ function sendContact() {
       </div>
     </section>
 
-    <!-- QUOTE -->
+    <!-- ZITAT -->
     <section style="padding:var(--sp-24) var(--sp-6);position:relative;">
       <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:40rem;height:24rem;background:rgba(173,198,255,0.05);border-radius:50%;filter:blur(6rem);pointer-events:none;z-index:0;"></div>
       <div style="position:relative;z-index:1;max-width:42rem;margin-inline:auto;text-align:center;">
@@ -232,7 +233,7 @@ function sendContact() {
       </div>
     </section>
 
-    <!-- CONTACT FORM -->
+    <!-- KONTAKTFORMULAR -->
     <section class="section" style="background:var(--surface-low);">
       <div class="container">
         <div style="max-width:40rem;margin-inline:auto;">

@@ -14,10 +14,10 @@ const { isAuthenticated, getAccessTokenSilently, loginWithRedirect } = useAuth0(
 
 const market = computed(() => store.currentMarket);
 
-// Trade state
+// Trade-Zustand
 const selectedOption = ref('YES');
 const tradeAmount = ref('');
-const tradeStep = ref(1); // 1=input, 2=confirm, 3=success
+const tradeStep = ref(1); // 1=Eingabe, 2=Bestätigung, 3=Erfolg
 const tradeLoading = ref(false);
 const tradeError = ref('');
 const lastTrade = ref(null);
@@ -39,6 +39,7 @@ const currentOdds = computed(() => {
 
 const amount = computed(() => parseFloat(tradeAmount.value) || 0);
 
+// Shares = Einsatz / (Odds/100), entspricht der Anzahl der Anteile die man zum aktuellen Preis kauft
 const potentialPayout = computed(() => {
   if (amount.value <= 0 || currentOdds.value <= 0) return 0;
   return Math.round((amount.value / (currentOdds.value / 100)) * 100) / 100;
@@ -48,6 +49,7 @@ const potentialProfit = computed(() => {
   return Math.round((potentialPayout.value - amount.value) * 100) / 100;
 });
 
+// Prozentualer Gewinn relativ zum Einsatz
 const profitPercent = computed(() => {
   if (amount.value <= 0) return 0;
   return Math.round((potentialProfit.value / amount.value) * 1000) / 10;
@@ -112,7 +114,7 @@ onMounted(() => store.fetchMarketById(route.params.id));
     <div class="container" style="padding-inline:var(--sp-6);max-width:80rem;">
       <div class="detail-grid">
 
-        <!-- Market Header -->
+        <!-- Markt-Kopfzeile -->
         <div class="glass-panel detail-market-header" style="position:relative;">
           <div style="position:absolute;top:var(--sp-4);right:var(--sp-4);">
             <span v-if="market?.resolved" class="badge-resolved">
@@ -144,7 +146,7 @@ onMounted(() => store.fetchMarketById(route.params.id));
           </div>
         </div>
 
-        <!-- Left: Chart -->
+        <!-- Links: Diagramm -->
         <section class="detail-chart-section" style="display:flex;flex-direction:column;gap:var(--sp-6);">
           <div class="glass-panel chart-panel">
             <div class="chart-controls">
@@ -174,11 +176,11 @@ onMounted(() => store.fetchMarketById(route.params.id));
           </div>
         </section>
 
-        <!-- Right: Trade Slip -->
+        <!-- Rechts: Handelsschein -->
         <aside>
           <div class="glass-panel trade-slip sticky-top">
 
-            <!-- Resolved State -->
+            <!-- Aufgelöster Zustand -->
             <template v-if="market?.resolved">
               <div style="text-align:center;padding:var(--sp-6) 0;">
                 <span class="material-symbols-outlined" style="font-size:3rem;color:var(--outline);margin-bottom:var(--sp-4);display:block;">lock</span>
@@ -191,7 +193,7 @@ onMounted(() => store.fetchMarketById(route.params.id));
               </div>
             </template>
 
-            <!-- Step 1: Input -->
+            <!-- Schritt 1: Eingabe -->
             <template v-else-if="tradeStep === 1">
               <h2 class="text-headline-md flex items-center gap-2 mb-6">
                 <span class="material-symbols-outlined text-primary-cont">bolt</span>
@@ -251,7 +253,7 @@ onMounted(() => store.fetchMarketById(route.params.id));
               </template>
             </template>
 
-            <!-- Step 2: Confirm -->
+            <!-- Schritt 2: Bestätigung -->
             <template v-if="tradeStep === 2">
               <h2 class="text-headline-md flex items-center gap-2 mb-6">
                 <span class="material-symbols-outlined text-primary-cont">verified</span>
@@ -292,7 +294,7 @@ onMounted(() => store.fetchMarketById(route.params.id));
               </div>
             </template>
 
-            <!-- Step 3: Success -->
+            <!-- Schritt 3: Erfolg -->
             <template v-if="tradeStep === 3">
               <div style="text-align:center;padding:var(--sp-6) 0;">
                 <span class="material-symbols-outlined" style="font-size:3rem;color:#4caf50;margin-bottom:var(--sp-4);display:block;">check_circle</span>
@@ -329,7 +331,7 @@ onMounted(() => store.fetchMarketById(route.params.id));
               </div>
             </template>
 
-            <!-- Polymarket Link -->
+            <!-- Polymarket-Link -->
             <a v-if="market?.eventSlug"
               :href="'https://polymarket.com/event/' + market.eventSlug"
               target="_blank"
@@ -346,7 +348,7 @@ onMounted(() => store.fetchMarketById(route.params.id));
           </div>
         </aside>
 
-        <!-- Context / Stats -->
+        <!-- Kontext / Statistiken -->
         <div class="detail-context-section grid-2" style="gap:var(--sp-6);">
           <div class="glass-panel">
             <h3 class="text-label-sm text-dim uppercase tracking-widest mb-4" style="letter-spacing:.2em;">Market Context</h3>

@@ -97,7 +97,7 @@ async function confirmDelete() {
 
   <main style="padding-top:var(--nav-height);padding-bottom:var(--sp-24);">
 
-    <!-- Page Header -->
+    <!-- Seiten-Kopfzeile -->
     <div style="text-align:center;padding:calc(var(--sp-14) + 3rem) var(--sp-6) var(--sp-10);position:relative;">
       <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:24rem;height:16rem;background:rgba(173,198,255,0.05);border-radius:50%;filter:blur(4rem);pointer-events:none;"></div>
       <div style="position:relative;z-index:1;">
@@ -120,18 +120,18 @@ async function confirmDelete() {
       </div>
     </div>
 
-    <!-- Settings sections -->
+    <!-- Einstellungsbereiche -->
     <div class="profile-section" style="display:flex;flex-direction:column;gap:var(--sp-6);">
 
-      <!-- Feedback -->
+      <!-- Rückmeldung -->
       <div v-if="editMsg" style="color:#4caf50;font-size:.85rem;padding:var(--sp-3);border:1px solid rgba(76,175,80,0.3);border-radius:var(--radius-md);text-align:center;">{{ editMsg }}</div>
       <div v-if="editError" style="color:#ff6b6b;font-size:.85rem;padding:var(--sp-3);border:1px solid rgba(255,107,107,0.3);border-radius:var(--radius-md);text-align:center;">{{ editError }}</div>
 
-      <!-- 1. Account Information -->
+      <!-- 1. Kontoinformationen -->
       <div class="settings-card">
         <p class="settings-card-title">Account Information</p>
 
-        <!-- Email (read-only, managed by Auth0) -->
+        <!-- E-Mail (schreibgeschützt, verwaltet durch Auth0) -->
         <div class="settings-row">
           <div>
             <p class="settings-row-label">Email</p>
@@ -140,7 +140,7 @@ async function confirmDelete() {
           <span style="font-family:var(--font-label);font-size:0.625rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--outline);background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:var(--radius-sm);padding:var(--sp-1) var(--sp-2);">Auth0</span>
         </div>
 
-        <!-- Username -->
+        <!-- Benutzername -->
         <div class="settings-row">
           <div>
             <p class="settings-row-label">Username</p>
@@ -154,7 +154,7 @@ async function confirmDelete() {
           <button v-if="editMode !== 'username'" class="btn-edit" @click="startEdit('username')"><span class="material-symbols-outlined" style="font-size:0.875rem;">edit</span>Edit</button>
         </div>
 
-        <!-- Gender -->
+        <!-- Geschlecht -->
         <div class="settings-row">
           <div>
             <p class="settings-row-label">Gender</p>
@@ -178,14 +178,14 @@ async function confirmDelete() {
           <button v-if="editMode !== 'gender'" class="btn-edit" @click="startEdit('gender')"><span class="material-symbols-outlined" style="font-size:0.875rem;">edit</span>Edit</button>
         </div>
 
-        <!-- User ID -->
+        <!-- Benutzer-ID -->
         <div class="settings-row">
           <div><p class="settings-row-label">User ID</p><p class="settings-row-value muted">#{{ user?.id }}</p></div>
           <span style="font-family:var(--font-label);font-size:0.625rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--outline);background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06);border-radius:var(--radius-sm);padding:var(--sp-1) var(--sp-2);">Fixed</span>
         </div>
       </div>
 
-      <!-- 2. Security (managed by Auth0) -->
+      <!-- 2. Sicherheit (verwaltet durch Auth0) -->
       <div class="settings-card">
         <p class="settings-card-title">Security</p>
         <div class="settings-row">
@@ -197,7 +197,7 @@ async function confirmDelete() {
         </div>
       </div>
 
-      <!-- 3. Danger Zone -->
+      <!-- 3. Gefahrenzone -->
       <div class="settings-card danger">
         <p class="settings-card-title">Danger Zone</p>
         <div class="settings-row">
@@ -226,7 +226,7 @@ async function confirmDelete() {
     </div>
   </main>
 
-  <!-- MOBILE NAV -->
+  <!-- MOBILE NAVIGATION -->
   <nav class="mobile-nav">
     <router-link to="/markets" class="mobile-nav-item">
       <span class="material-symbols-outlined">explore</span>

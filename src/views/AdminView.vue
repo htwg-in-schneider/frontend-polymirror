@@ -9,10 +9,10 @@ const API = API_BASE;
 const { getAccessTokenSilently } = useAuth0();
 const userStore = useUserStore();
 
-// --- Tabs ---
+// --- Registerkarten ---
 const activeTab = ref('markets');
 
-// --- Categories (from DB) ---
+// --- Kategorien (aus der DB) ---
 const categories = ref([]);
 const allCategories = computed(() => categories.value.map(c => c.name));
 const newCategoryInput = ref('');
@@ -68,7 +68,7 @@ async function removeCategory(cat) {
   }
 }
 
-// --- Markets ---
+// --- Märkte ---
 const markets = ref([]);
 const marketSearch = ref('');
 const marketPage = ref(0);
@@ -173,7 +173,7 @@ async function createMarket() {
   }
 }
 
-// --- Resolve Market ---
+// --- Markt auflösen ---
 async function resolveMarket(market) {
   const outcome = prompt(`Resolve "${market.title}"?\nEnter outcome: YES or NO`);
   if (!outcome) return;
@@ -191,7 +191,7 @@ async function resolveMarket(market) {
   }
 }
 
-// --- Users ---
+// --- Benutzer ---
 const users = ref([]);
 const userSearch = ref('');
 const userLoading = ref(false);
@@ -251,7 +251,7 @@ async function saveUser(user) {
   }
 }
 
-// --- Seed Demo Data ---
+// --- Demo-Daten erzeugen ---
 const seeding = ref(false);
 const deletingSeed = ref(false);
 
@@ -289,13 +289,13 @@ async function deleteSeedData() {
   }
 }
 
-// --- Ban/Unban ---
+// --- Sperren/Entsperren ---
 async function toggleBan(user) {
   const isBanned = user.banned;
   let banReason = null;
   if (!isBanned) {
     banReason = prompt('Ban reason (optional):');
-    if (banReason === null) return; // cancelled
+    if (banReason === null) return; // abgebrochen
   }
   try {
     const token = await getAccessTokenSilently();
@@ -311,7 +311,7 @@ async function toggleBan(user) {
   }
 }
 
-// --- Trades ---
+// --- Trades (Handelsaktionen) ---
 const trades = ref([]);
 const tradeSearch = ref('');
 const tradePage = ref(0);
@@ -343,7 +343,7 @@ function formatDate(dateStr) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-// --- Appeals ---
+// --- Einsprüche ---
 const appeals = ref([]);
 const appealsLoading = ref(false);
 
@@ -387,7 +387,7 @@ function handleRejectAppeal(appeal) {
 
 const pendingAppealsCount = computed(() => appeals.value.filter(a => a.status === 'PENDING').length);
 
-// --- Tab watchers ---
+// --- Tab-Überwachung ---
 watch(activeTab, (tab) => {
   if (tab === 'markets') loadMarkets();
   else if (tab === 'users') loadUsers();
@@ -406,7 +406,7 @@ onMounted(() => {
   <main style="padding-top:var(--nav-height);padding-bottom:var(--sp-24);">
     <div class="container" style="max-width:80rem;">
 
-      <!-- Header -->
+      <!-- Kopfzeile -->
       <div style="margin:var(--sp-8) 0;display:flex;justify-content:space-between;align-items:center;">
         <h1 class="text-headline-lg flex items-center gap-3">
           <span class="material-symbols-outlined text-primary" style="font-size:2rem;">admin_panel_settings</span>
@@ -414,7 +414,7 @@ onMounted(() => {
         </h1>
       </div>
 
-      <!-- Tabs -->
+      <!-- Registerkarten -->
       <div class="admin-tabs">
         <button :class="['admin-tab', { active: activeTab === 'markets' }]" @click="activeTab = 'markets'">
           <span class="material-symbols-outlined">balance</span> Markets
@@ -431,7 +431,7 @@ onMounted(() => {
         </button>
       </div>
 
-      <!-- ==================== MARKETS TAB ==================== -->
+      <!-- ==================== MÄRKTE-TAB ==================== -->
       <div v-if="activeTab === 'markets'" class="glass-panel" style="padding:0;overflow:hidden;">
         <div style="padding:var(--sp-6) var(--sp-8);border-bottom:1px solid rgba(66,71,84,0.15);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--sp-4);">
           <h3 class="text-headline-sm">Markets Management</h3>
@@ -452,7 +452,7 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- Create Market Form -->
+        <!-- Markt-Erstellungsformular -->
         <div v-if="showCreateMarket" style="padding:var(--sp-6) var(--sp-8);border-bottom:1px solid rgba(66,71,84,0.15);background:rgba(77,142,255,0.03);">
           <h4 style="margin-bottom:var(--sp-4);font-weight:600;">Create New Market</h4>
           <div class="admin-create-grid">
@@ -572,7 +572,7 @@ onMounted(() => {
           </table>
         </div>
 
-        <!-- Pagination -->
+        <!-- Seitennavigation -->
         <div v-if="marketTotalPages > 1" class="admin-pagination">
           <button class="btn btn-ghost btn-sm" :disabled="marketPage === 0" @click="marketPage--; loadMarkets()">Previous</button>
           <span class="text-label-sm text-dim">Page {{ marketPage + 1 }} / {{ marketTotalPages }}</span>
@@ -580,7 +580,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- ==================== USERS TAB ==================== -->
+      <!-- ==================== BENUTZER-TAB ==================== -->
       <div v-if="activeTab === 'users'" class="glass-panel" style="padding:0;overflow:hidden;">
         <div style="padding:var(--sp-6) var(--sp-8);border-bottom:1px solid rgba(66,71,84,0.15);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--sp-4);">
           <h3 class="text-headline-sm">Users Management</h3>
@@ -673,7 +673,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- ==================== TRADES TAB ==================== -->
+      <!-- ==================== TRADES-TAB ==================== -->
       <div v-if="activeTab === 'trades'" class="glass-panel" style="padding:0;overflow:hidden;">
         <div style="padding:var(--sp-6) var(--sp-8);border-bottom:1px solid rgba(66,71,84,0.15);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--sp-4);">
           <h3 class="text-headline-sm">Trades Overview</h3>
@@ -718,7 +718,7 @@ onMounted(() => {
           </table>
         </div>
 
-        <!-- Pagination -->
+        <!-- Seitennavigation -->
         <div v-if="tradeTotalPages > 1" class="admin-pagination">
           <button class="btn btn-ghost btn-sm" :disabled="tradePage === 0" @click="tradePage--; loadTrades()">Previous</button>
           <span class="text-label-sm text-dim">Page {{ tradePage + 1 }} / {{ tradeTotalPages }}</span>
@@ -726,7 +726,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- ==================== APPEALS TAB ==================== -->
+      <!-- ==================== EINSPRÜCHE-TAB ==================== -->
       <div v-if="activeTab === 'appeals'" class="glass-panel" style="padding:0;overflow:hidden;">
         <div style="padding:var(--sp-6) var(--sp-8);border-bottom:1px solid rgba(66,71,84,0.15);display:flex;justify-content:space-between;align-items:center;">
           <h3 class="text-headline-sm">Appeals Management</h3>
@@ -1027,7 +1027,7 @@ onMounted(() => {
   margin-bottom: var(--sp-4);
 }
 
-/* Responsive admin */
+/* Responsives Admin-Layout */
 @media (max-width: 47.9rem) {
   .admin-create-grid {
     grid-template-columns: 1fr;

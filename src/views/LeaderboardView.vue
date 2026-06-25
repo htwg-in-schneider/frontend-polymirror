@@ -10,6 +10,7 @@ const loading = ref(true);
 const error = ref(null);
 
 const totalPlayers = computed(() => leaderboard.value.length);
+// Gesamtvolumen aller Trader, formatiert in K/M/B
 const totalVolume = computed(() => {
   const sum = leaderboard.value.reduce((acc, e) => acc + (e.totalInvested || 0), 0);
   if (sum >= 1_000_000) return (sum / 1_000_000).toFixed(1) + 'M';
@@ -35,6 +36,7 @@ function formatProfit(val) {
   return val >= 0 ? '+' + abs : '-' + abs;
 }
 
+// Top-3 Styling: Rang 1 = Gold, Rang 2 = Silber, Rang 3 = Bronze, alle anderen = Standard-Styling
 function rankClass(rank) {
   if (rank === 1) return 'leaderboard-rank-1';
   if (rank === 2) return 'leaderboard-rank-2';
@@ -72,7 +74,7 @@ onMounted(async () => {
 <template>
   <main class="page-with-sidebar app-main" style="padding-bottom:var(--sp-24);">
 
-    <!-- Header -->
+    <!-- Kopfzeile -->
     <div style="background:linear-gradient(180deg,var(--surface-base) 0%,var(--surface) 100%);padding:var(--sp-16) var(--sp-6) var(--sp-12);text-align:center;position:relative;overflow:hidden;">
       <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:30rem;height:30rem;background:rgba(173,198,255,0.06);border-radius:50%;filter:blur(5rem);pointer-events:none;"></div>
       <div style="position:relative;z-index:1;">
@@ -82,7 +84,7 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- Stats -->
+    <!-- Statistiken -->
     <div class="container" style="margin-bottom:var(--sp-12);">
       <div class="season-stats-grid" style="background:var(--surface-low);border-radius:var(--radius-xl);padding:var(--sp-6);border:1px solid rgba(255,255,255,0.04);">
         <div class="text-center">
@@ -100,20 +102,20 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- Loading / Error -->
+    <!-- Laden / Fehler -->
     <div v-if="loading" style="text-align:center;padding:var(--sp-16);color:var(--on-surface-variant);">
       <span class="material-symbols-outlined" style="font-size:2rem;animation:spin 1s linear infinite;">refresh</span>
       <p style="margin-top:var(--sp-4);">Loading leaderboard...</p>
     </div>
     <div v-else-if="error" style="text-align:center;padding:var(--sp-16);color:var(--error);">{{ error }}</div>
 
-    <!-- Leaderboard Table -->
+    <!-- Bestenlisten-Tabelle -->
     <div v-else class="container">
 
       <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
       <div style="min-width:42rem;">
 
-      <!-- Header row -->
+      <!-- Kopfzeile der Tabelle -->
       <div style="display:grid;grid-template-columns:50px minmax(0,1fr) 120px 100px 100px;column-gap:var(--sp-4);padding:var(--sp-2) var(--sp-6);margin-bottom:var(--sp-2);">
         <span class="text-label-sm text-dim uppercase tracking-widest">#</span>
         <span class="text-label-sm text-dim uppercase tracking-widest">Player</span>
@@ -156,7 +158,7 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- Current user highlight if not in top list (scrolled past) -->
+        <!-- Aktuellen Benutzer hervorheben, falls nicht in der Top-Liste (weiter unten) -->
         <template v-if="myEntry && myEntry.rank > leaderboard.length">
           <div class="leaderboard-row" style="border:1px solid rgba(208,188,255,0.2);background:rgba(160,120,255,0.06);">
             <div class="leaderboard-player-sticky" style="background:color-mix(in srgb,var(--surface-low),rgba(160,120,255,0.1));">
@@ -183,7 +185,7 @@ onMounted(async () => {
     </div>
   </main>
 
-  <!-- MOBILE NAV -->
+  <!-- MOBILE NAVIGATION -->
   <nav class="mobile-nav">
     <router-link to="/markets" class="mobile-nav-item"><span class="material-symbols-outlined">explore</span><span class="mobile-nav-label">Markets</span></router-link>
     <router-link to="/dashboard" class="mobile-nav-item"><span class="material-symbols-outlined">dashboard</span><span class="mobile-nav-label">Dash</span></router-link>

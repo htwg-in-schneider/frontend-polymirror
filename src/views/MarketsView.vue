@@ -54,7 +54,7 @@ onMounted(async () => {
   } catch (e) {
     console.error('Failed to load categories', e);
   }
-  // Load featured market (highest volume single market)
+  // Hervorgehobenen Markt laden (einzelner Markt mit höchstem Volumen)
   try {
     const { data } = await axios.get(`${API_BASE}/markets`, { params: { page: 0, size: 1 } });
     if (data.content?.length) featuredMarket.value = data.content[0];
@@ -65,7 +65,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <!-- SIDEBAR -->
+  <!-- SEITENLEISTE -->
   <aside class="sidebar">
     <nav class="sidebar-nav">
       <button @click="store.filterByCategory('')" :class="['sidebar-link', store.selectedCategory === '' ? 'active' : '']">
@@ -89,10 +89,10 @@ onMounted(async () => {
     </nav>
   </aside>
 
-  <!-- MAIN CONTENT -->
+  <!-- HAUPTINHALT -->
   <main class="page-with-sidebar app-main">
 
-    <!-- Mobile Category Filter (visible only on mobile when sidebar is hidden) -->
+    <!-- Mobiler Kategorie-Filter (nur auf Mobilgeräten sichtbar, wenn die Seitenleiste ausgeblendet ist) -->
     <div class="mobile-category-bar">
       <button @click="store.filterByCategory('')" :class="['mobile-cat-btn', store.selectedCategory === '' ? 'active' : '']">All</button>
       <button v-for="cat in sidebarCategories" :key="cat.id" @click="store.filterByCategory(cat.name)" :class="['mobile-cat-btn', store.selectedCategory === cat.name ? 'active' : '']">
@@ -100,7 +100,7 @@ onMounted(async () => {
       </button>
     </div>
 
-    <!-- Featured Market Hero -->
+    <!-- Hervorgehobener Markt (Hero) -->
     <router-link v-if="featuredMarket" :to="'/market/' + featuredMarket.id" class="market-hero mb-12" style="text-decoration:none;color:inherit;display:block;">
       <div class="market-hero-content">
         <div class="flex items-center gap-3 mb-4">
@@ -121,7 +121,7 @@ onMounted(async () => {
       </div>
     </router-link>
 
-    <!-- Loading / Error -->
+    <!-- Laden / Fehler -->
     <div v-if="store.loading" style="text-align:center;padding:var(--sp-16);color:var(--on-surface-variant);">
       <span class="material-symbols-outlined" style="font-size:2rem;animation:spin 1s linear infinite;">refresh</span>
       <p style="margin-top:var(--sp-4);">Loading markets...</p>
@@ -130,12 +130,12 @@ onMounted(async () => {
       {{ store.error }}
     </div>
 
-    <!-- Market Grid -->
+    <!-- Markt-Raster -->
     <div v-else class="grid-3" style="margin-bottom:var(--sp-12);">
 
       <template v-for="group in store.groups" :key="group.eventId">
 
-        <!-- Single-outcome market: YES/NO card -->
+        <!-- Einzelergebnis-Markt: JA/NEIN-Karte -->
         <router-link
           v-if="group.markets.length === 1"
           :to="'/market/' + group.markets[0].id"
@@ -172,7 +172,7 @@ onMounted(async () => {
           </div>
         </router-link>
 
-        <!-- Multi-outcome event: grouped card -->
+        <!-- Mehrergebnis-Event: gruppierte Karte -->
         <div v-else class="card-market">
           <router-link :to="'/event/' + group.eventId" class="card-market-body event-card-link">
             <div class="flex justify-between items-start mb-4">
@@ -210,7 +210,7 @@ onMounted(async () => {
       </template>
     </div>
 
-    <!-- Pagination -->
+    <!-- Seitennavigation -->
     <div style="display:flex;align-items:center;justify-content:center;gap:var(--sp-4);margin-bottom:var(--sp-12);">
       <button class="btn btn-ghost btn-sm" :disabled="store.page === 0" @click="store.prevPage()">
         <span class="material-symbols-outlined">chevron_left</span>
@@ -226,7 +226,7 @@ onMounted(async () => {
   </main>
 
 
-  <!-- MOBILE NAV -->
+  <!-- MOBILE NAVIGATION -->
   <nav class="mobile-nav">
     <router-link to="/markets" class="mobile-nav-item active">
       <span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">explore</span>
@@ -287,7 +287,7 @@ onMounted(async () => {
   flex-shrink: 0;
 }
 
-/* Mobile category filter bar — hidden on desktop (sidebar visible) */
+/* Mobiler Kategorie-Filter — auf Desktop ausgeblendet (Seitenleiste sichtbar) */
 .mobile-category-bar {
   display: none;
   overflow-x: auto;

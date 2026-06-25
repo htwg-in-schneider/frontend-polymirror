@@ -46,21 +46,21 @@ onMounted(async () => {
   <main style="padding-top:var(--nav-height);padding-bottom:var(--sp-24);">
     <div class="container" style="max-width:72rem;">
 
-      <!-- Loading -->
+      <!-- Laden -->
       <div v-if="loading" style="text-align:center;padding:var(--sp-16);color:var(--on-surface-variant);">
         <span class="material-symbols-outlined" style="font-size:2rem;animation:spin 1s linear infinite;">refresh</span>
         <p style="margin-top:var(--sp-4);">Loading event...</p>
       </div>
 
-      <!-- Error -->
+      <!-- Fehler -->
       <div v-else-if="error" style="text-align:center;padding:var(--sp-16);color:var(--error);">
         {{ error }}
       </div>
 
-      <!-- Event Content -->
+      <!-- Event-Inhalt -->
       <template v-else-if="event">
 
-        <!-- Header -->
+        <!-- Kopfzeile -->
         <div class="glass-panel" style="margin-top:var(--sp-8);margin-bottom:var(--sp-6);position:relative;">
           <div class="flex items-center gap-2 mb-4 text-primary">
             <span class="material-symbols-outlined" style="font-size:.875rem;">{{ categoryIcon }}</span>
@@ -84,7 +84,7 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- Markets List -->
+        <!-- Markt-Liste -->
         <div class="event-markets-grid">
           <router-link
             v-for="m in event.markets"
@@ -119,7 +119,7 @@ onMounted(async () => {
           </router-link>
         </div>
 
-        <!-- Back -->
+        <!-- Zurück -->
         <div style="text-align:center;margin-top:var(--sp-8);">
           <router-link to="/markets" class="btn btn-ghost btn-sm">
             <span class="material-symbols-outlined" style="font-size:1rem;">arrow_back</span>

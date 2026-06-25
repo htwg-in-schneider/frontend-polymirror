@@ -42,7 +42,7 @@ async function sellTrade(trade) {
       headers: { Authorization: `Bearer ${token}` },
     });
     alert(`Sold for ${data.sellValue.toFixed(2)} Poly`);
-    // Refresh
+    // Aktualisieren
     await userStore.loadProfile(getAccessTokenSilently);
     const res = await axios.get(`${API_BASE}/trades/me`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -64,9 +64,9 @@ function formatDate(dateStr) {
   <main style="padding-top:var(--nav-height);padding-bottom:var(--sp-24);">
     <div class="container" style="max-width:72rem;">
 
-      <!-- Balance + Stats Row -->
+      <!-- Kontostand + Statistiken Zeile -->
       <div class="grid-2" style="margin-bottom:var(--sp-8);margin-top:var(--sp-8);">
-        <!-- Balance Panel -->
+        <!-- Kontostand-Panel -->
         <div class="glass-panel balance-panel">
           <div class="balance-panel-bg">
             <svg width="200" height="120" viewBox="0 0 200 120" style="opacity:.6;">
@@ -106,7 +106,7 @@ function formatDate(dateStr) {
           </div>
         </div>
 
-        <!-- Performance Chart -->
+        <!-- Leistungsdiagramm -->
         <div class="glass-panel" style="display:flex;flex-direction:column;justify-content:space-between;">
           <div>
             <h2 class="text-label-sm text-primary uppercase tracking-widest mb-6" style="opacity:.7;letter-spacing:.2em;">Performance Trajectory</h2>
@@ -130,7 +130,7 @@ function formatDate(dateStr) {
         </div>
       </div>
 
-      <!-- Positions Table -->
+      <!-- Positionstabelle -->
       <div class="glass-panel" style="padding:0;overflow:hidden;">
         <div style="padding:var(--sp-6) var(--sp-8);border-bottom:1px solid rgba(66,71,84,0.15);display:flex;justify-content:space-between;align-items:center;">
           <h3 class="text-headline-sm flex items-center gap-2">
@@ -151,7 +151,7 @@ function formatDate(dateStr) {
         </div>
 
         <div v-else class="data-table-wrapper">
-          <!-- Open Positions -->
+          <!-- Offene Positionen -->
           <div v-if="openTrades.length" style="padding:var(--sp-4) var(--sp-8) var(--sp-2);border-bottom:1px solid rgba(66,71,84,0.1);">
             <span class="text-label-sm text-primary uppercase" style="letter-spacing:.1em;">Open Positions ({{ openTrades.length }})</span>
           </div>
@@ -191,7 +191,7 @@ function formatDate(dateStr) {
             </tbody>
           </table>
 
-          <!-- Closed Positions -->
+          <!-- Geschlossene Positionen -->
           <div v-if="closedTrades.length" style="padding:var(--sp-4) var(--sp-8) var(--sp-2);border-bottom:1px solid rgba(66,71,84,0.1);">
             <span class="text-label-sm text-dim uppercase" style="letter-spacing:.1em;">Closed Positions ({{ closedTrades.length }})</span>
           </div>
@@ -233,7 +233,7 @@ function formatDate(dateStr) {
     </div>
   </main>
 
-  <!-- MOBILE NAV -->
+  <!-- MOBILE NAVIGATION -->
   <nav class="mobile-nav">
     <router-link to="/markets" class="mobile-nav-item">
       <span class="material-symbols-outlined">explore</span>
