@@ -457,8 +457,8 @@ Bei Events mit mehreren Markets (z.B. "World Cup Winner") werden alle zugehörig
 **Normaler User:**
 | Feld | Wert |
 |---|---|
-| E-Mail | thomas@gmail.com |
-| Passwort | Thomas1! |
+| E-Mail | syconnect00@gmail.com |
+| Passwort | Admin123! |
 | Rolle | USER |
 
 **Admin:**

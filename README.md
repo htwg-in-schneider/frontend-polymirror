@@ -47,7 +47,7 @@ VITE_API_BASE_URL=<backend-api-url>
 
 | Rolle | E-Mail | Passwort |
 |---|---|---|
-| User | thomas@gmail.com | Thomas1! |
+| User | syconnect00@gmail.com | Admin123! |
 | Admin | admin@polymirror.de | Admin123! |
 
 > Der Admin-Account hat Zugang zum Admin Panel unter `/admin`.
